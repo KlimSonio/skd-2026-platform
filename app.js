@@ -1,7 +1,38 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan (Widok Ciągły)
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan, Haptyka Mobile
  */
+
+// ================= 0. MODUŁ HAPTYKI (DOTYKOWEGO SPRZĘŻENIA ZWROTNEGO) =================
+function triggerHaptic(type = 'light') {
+  if (!('vibrate' in navigator)) return;
+  try {
+    switch (type) {
+      case 'light': // Lekki klik: zmiana tabów, otwarcie modalu
+        navigator.vibrate(10);
+        break;
+      case 'selection': // Przełączanie dni, pól wyboru
+        navigator.vibrate(14);
+        break;
+      case 'success': // Dodanie do planu, oddanie głosu w quizie
+        navigator.vibrate([20, 35, 30]);
+        break;
+      case 'upvote': // Poparcie pytania w Q&A
+        navigator.vibrate(22);
+        break;
+      case 'error': // Błędny PIN, odrzucone pytanie antyspamem
+        navigator.vibrate([60, 40, 60]);
+        break;
+      case 'warning': // Usunięcie z planu
+        navigator.vibrate(25);
+        break;
+      default:
+        navigator.vibrate(12);
+    }
+  } catch (e) {
+    // Ciche przechwycenie w przypadku blokad uprawnień przeglądarki
+  }
+}
 
 // ================= 1. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
 const QUESTIONS_BY_PIN = {
@@ -280,10 +311,12 @@ function updateDayBadgesFromCounts(counts, cleanQ) {
 window.clearLiveSearch = function() {
   const input = document.getElementById('global-search-input');
   if (input) input.value = '';
+  triggerHaptic('light');
   runLiveSearch('');
 };
 
 function switchGlobalDay(dayKey, resetSearchOrigin = true) {
+  triggerHaptic('selection');
   currentGlobalDay = dayKey;
   if (resetSearchOrigin) searchOriginDay = dayKey;
 
@@ -308,9 +341,11 @@ function switchGlobalDay(dayKey, resetSearchOrigin = true) {
 function toggleCalendarSession(sessionId) {
   if (userCalendarPlan.includes(sessionId)) {
     userCalendarPlan = userCalendarPlan.filter(id => id !== sessionId);
+    triggerHaptic('warning');
     showToast('Usunięto z Twojego Planu');
   } else {
     userCalendarPlan.push(sessionId);
+    triggerHaptic('success');
     showToast('✓ Dodano do Twojego Planu');
   }
   localStorage.setItem('med_conf_cal_plan', JSON.stringify(userCalendarPlan));
@@ -481,6 +516,8 @@ function openSessionModal(sessionId) {
   const data = findSessionById(sessionId);
   if (!data) return;
 
+  triggerHaptic('light');
+
   const { session, timeSlot, dayLabel } = data;
   const isSelected = userCalendarPlan.includes(session.id);
   const modal = document.getElementById('session-modal');
@@ -520,6 +557,7 @@ function closeSessionModal() {
   const modal = document.getElementById('session-modal');
   if (modal) modal.style.display = 'none';
   document.body.style.overflow = '';
+  triggerHaptic('light');
 }
 
 document.addEventListener('keydown', (e) => {
@@ -548,17 +586,19 @@ function processPin(pin) {
   const errorMsg = document.getElementById('main-pin-error');
   if (QUESTIONS_BY_PIN[pin]) {
     errorMsg.classList.add('hidden');
+    triggerHaptic('success');
     renderQuestion(QUESTIONS_BY_PIN[pin]);
     document.getElementById('vote-pin-welcome').classList.add('hidden');
     document.getElementById('vote-active-view').classList.remove('hidden');
     showToast(`✓ Dołączono do sesji (${QUESTIONS_BY_PIN[pin].roomShort})`);
   } else {
     errorMsg.classList.remove('hidden');
-    if ('vibrate' in navigator) navigator.vibrate(100);
+    triggerHaptic('error');
   }
 }
 
 function resetPinVote() {
+  triggerHaptic('light');
   activeQuestionData = null;
   document.getElementById('main-pin-input').value = '';
   document.getElementById('main-pin-error').classList.add('hidden');
@@ -601,7 +641,7 @@ function renderQuestion(data) {
 }
 
 function castVote(selectedKey, optionsData) {
-  if ('vibrate' in navigator) navigator.vibrate(35);
+  triggerHaptic('success');
   const buttons = document.querySelectorAll('.vote-btn');
   buttons.forEach(btn => btn.disabled = true);
   document.getElementById('vote-alert').classList.remove('hidden');
@@ -621,6 +661,7 @@ function castVote(selectedKey, optionsData) {
 
 // ================= 8. Q&A Z FILTREM =================
 function openQuestionForm() {
+  triggerHaptic('light');
   document.getElementById('qa-form-closed').classList.add('hidden');
   document.getElementById('qa-form-opened').classList.remove('hidden');
   document.getElementById('qa-validation-error').classList.add('hidden');
@@ -658,6 +699,7 @@ function renderDedicatedQaList() {
 
 function toggleUpvoteQuestion(index) {
   if (!activeQuestionData) return;
+  triggerHaptic('upvote');
   const q = activeQuestionData.qaList[index];
   q.votes += q.upvoted ? -1 : 1;
   q.upvoted = !q.upvoted;
@@ -674,10 +716,11 @@ function submitDedicatedQuestion() {
   if (!result.valid) {
     errorBox.innerText = result.error;
     errorBox.classList.remove('hidden');
-    if ('vibrate' in navigator) navigator.vibrate(80);
+    triggerHaptic('error');
     return;
   }
 
+  triggerHaptic('success');
   errorBox.classList.add('hidden');
   activeQuestionData.qaList.unshift({
     id: 'q_' + Date.now(),
@@ -693,6 +736,7 @@ function submitDedicatedQuestion() {
 
 // ================= 9. ZAKŁADKI =================
 function switchTab(tabId) {
+  triggerHaptic('light');
   currentActiveTab = tabId;
 
   ['program', 'myplan', 'vote', 'oil'].forEach(t => {
@@ -799,3 +843,19 @@ setInterval(() => {
   if (currentActiveTab === 'program') renderProgramTimeline();
   if (currentActiveTab === 'myplan') renderMyPlanTimeline();
 }, 60000);
+
+// ================= 11. SPLASH SCREEN (TIMER + POWITANIE HAPTYCZNE) =================
+(function initSafeSplashScreen() {
+  const splash = document.getElementById('app-splash-screen');
+  if (!splash) return;
+
+  setTimeout(() => {
+    splash.classList.add('splash-hidden');
+    triggerHaptic('light'); // Haptyczne potwierdzenie załadowania huba
+    setTimeout(() => {
+      if (splash && splash.parentNode) {
+        splash.parentNode.removeChild(splash);
+      }
+    }, 450);
+  }, 4000);
+})();
