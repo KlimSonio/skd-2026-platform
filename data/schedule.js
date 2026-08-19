@@ -1,8 +1,8 @@
 // ================= 1. BAZA DANYCH KALENDARZA =================
 const DAY_NAMES = {
   'day-1': 'Piątek (24.04)',
-  'day-2': 'Sobotę (25.04)',
-  'day-3': 'Niedzielę (26.04)'
+  'day-2': 'Sobota (25.04)',
+  'day-3': 'Niedziela (26.04)'
 };
 
 const CALENDAR_SLOTS = {

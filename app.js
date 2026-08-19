@@ -1,6 +1,6 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan Badge
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan (Widok Ciągły)
  */
 
 // ================= 1. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
@@ -114,7 +114,7 @@ window.runLiveSearch = function(rawVal) {
   const dayResults = calculateResultsAcrossDays(q);
   updateDayBadgesFromCounts(dayResults, q);
 
-  if (dayResults[currentGlobalDay] === 0) {
+  if (currentActiveTab === 'program' && dayResults[currentGlobalDay] === 0) {
     const matchingDays = Object.keys(dayResults).filter(k => dayResults[k] > 0);
     
     if (matchingDays.length === 1) {
@@ -134,7 +134,7 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
   if (!container) return;
 
   const slots = container.querySelectorAll('.session-slot');
-  let currentDayMatches = 0;
+  let currentMatches = 0;
 
   slots.forEach(slot => {
     const cards = slot.querySelectorAll('.card');
@@ -145,7 +145,7 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
       if (q.length === 0 || target.includes(q)) {
         card.classList.remove('hidden');
         slotHasMatch = true;
-        currentDayMatches++;
+        currentMatches++;
       } else {
         card.classList.add('hidden');
       }
@@ -155,23 +155,46 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
     else slot.classList.add('hidden');
   });
 
-  let noRes = document.getElementById('search-no-results');
-  if (currentDayMatches === 0 && q.length > 0) {
-    const otherDaysWithHits = Object.keys(dayResults).filter(k => k !== currentGlobalDay && dayResults[k] > 0);
+  // Ukryj puste sekcje dni w Moim Planie jeśli żaden slot nie pasuje
+  if (currentActiveTab === 'myplan') {
+    const daySections = container.querySelectorAll('.myplan-day-section');
+    daySections.forEach(sec => {
+      const visibleSlots = sec.querySelectorAll('.session-slot:not(.hidden)');
+      if (visibleSlots.length === 0 && q.length > 0) sec.classList.add('hidden');
+      else sec.classList.remove('hidden');
+    });
+  }
 
-    let jumpButtonsHtml = '';
-    if (otherDaysWithHits.length > 0) {
-      jumpButtonsHtml = `
-        <div style="margin-top:10px; border-top:1px solid #e2e8f0; padding-top:10px;">
-          <div style="font-size:11px; font-weight:700; color:#1e3a8a; margin-bottom:6px;">Dostępne w innych dniach:</div>
-          <div style="display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
-            ${otherDaysWithHits.map(dayKey => `
-              <button onclick="switchGlobalDay('${dayKey}')" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; font-size:11px; font-weight:700; padding:5px 10px; border-radius:7px; cursor:pointer;">
-                👉 ${DAY_NAMES[dayKey]} (${dayResults[dayKey]})
-              </button>
-            `).join('')}
+  let noRes = document.getElementById('search-no-results');
+  if (currentMatches === 0 && q.length > 0) {
+    let messageHtml = '';
+
+    if (currentActiveTab === 'program') {
+      const otherDaysWithHits = Object.keys(dayResults).filter(k => k !== currentGlobalDay && dayResults[k] > 0);
+      let jumpButtonsHtml = '';
+      if (otherDaysWithHits.length > 0) {
+        jumpButtonsHtml = `
+          <div style="margin-top:10px; border-top:1px solid #e2e8f0; padding-top:10px;">
+            <div style="font-size:11px; font-weight:700; color:#1e3a8a; margin-bottom:6px;">Dostępne w innych dniach:</div>
+            <div style="display:flex; justify-content:center; gap:6px; flex-wrap:wrap;">
+              ${otherDaysWithHits.map(dayKey => `
+                <button onclick="switchGlobalDay('${dayKey}')" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; font-size:11px; font-weight:700; padding:5px 10px; border-radius:7px; cursor:pointer;">
+                  👉 ${DAY_NAMES[dayKey]} (${dayResults[dayKey]})
+                </button>
+              `).join('')}
+            </div>
           </div>
-        </div>
+        `;
+      }
+      messageHtml = `
+        <div style="font-size:12.5px; font-weight:700; color:#0f172a; margin-bottom:3px;">Brak wyników w: ${DAY_NAMES[currentGlobalDay]}</div>
+        <div style="font-size:11px; color:#64748b;">Dla zapytania: <strong>„${rawQ}”</strong></div>
+        ${jumpButtonsHtml}
+      `;
+    } else {
+      messageHtml = `
+        <div style="font-size:12.5px; font-weight:700; color:#0f172a; margin-bottom:3px;">Brak wyników w Twoim Planie</div>
+        <div style="font-size:11px; color:#64748b;">Dla zapytania: <strong>„${rawQ}”</strong></div>
       `;
     }
 
@@ -181,11 +204,7 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
       container.appendChild(noRes);
     }
     noRes.style.cssText = 'text-align:center; padding:18px 12px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; margin-top:8px;';
-    noRes.innerHTML = `
-      <div style="font-size:12.5px; font-weight:700; color:#0f172a; margin-bottom:3px;">Brak wyników w: ${DAY_NAMES[currentGlobalDay]}</div>
-      <div style="font-size:11px; color:#64748b;">Dla zapytania: <strong>„${rawQ}”</strong></div>
-      ${jumpButtonsHtml}
-    `;
+    noRes.innerHTML = messageHtml;
   } else {
     if (noRes) noRes.remove();
   }
@@ -237,25 +256,7 @@ function refreshDayBadges() {
 
   dayKeys.forEach((dKey, index) => {
     const btn = document.getElementById(`btn-day-${index + 1}`);
-    if (!btn) return;
-
-    if (currentActiveTab === 'myplan') {
-      const slots = CALENDAR_SLOTS[dKey] || [];
-      let countForDay = 0;
-      slots.forEach(slot => {
-        slot.sessions.forEach(s => {
-          if (!s.isBreak && userCalendarPlan.includes(s.id)) countForDay++;
-        });
-      });
-
-      if (countForDay > 0) {
-        btn.innerHTML = `${dayBaseLabels[index]} <span style="font-size:9.5px; padding:1px 5px; border-radius:10px; font-weight:800; background:#dbeafe; color:#1e3a8a;">(${countForDay})</span>`;
-      } else {
-        btn.innerText = dayBaseLabels[index];
-      }
-    } else {
-      btn.innerText = dayBaseLabels[index];
-    }
+    if (btn) btn.innerText = dayBaseLabels[index];
   });
 }
 
@@ -296,7 +297,6 @@ function switchGlobalDay(dayKey, resetSearchOrigin = true) {
   });
 
   renderProgramTimeline();
-  renderMyPlanTimeline();
   
   const input = document.getElementById('global-search-input');
   if (input && input.value.trim().length > 0) {
@@ -316,9 +316,8 @@ function toggleCalendarSession(sessionId) {
   }
   localStorage.setItem('med_conf_cal_plan', JSON.stringify(userCalendarPlan));
   updateMyPlanCount();
-  refreshDayBadges();
   renderProgramTimeline();
-  renderMyPlanTimeline();
+  if (currentActiveTab === 'myplan') renderMyPlanTimeline();
 }
 
 function updateMyPlanCount() {
@@ -364,20 +363,40 @@ function renderProgramTimeline() {
 function renderMyPlanTimeline() {
   const container = document.getElementById('myplan-timeline');
   if (!container) return;
-  const slots = CALENDAR_SLOTS[currentGlobalDay] || [];
-  const html = buildTimelineHTML(slots, true);
-  
-  if (!html.trim()) {
+
+  if (userCalendarPlan.length === 0) {
     container.innerHTML = `
-      <div style="text-align:center; padding:32px 14px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; margin-top:6px;">
-        <div style="font-size:13px; font-weight:700; color:#0f172a; margin-bottom:4px;">Brak wybranych sesji na ten dzień</div>
-        <div style="font-size:11px; color:#64748b; margin-bottom:12px;">Wejdź w zakładkę „Program” i kliknij „+ Dodaj do planu” przy wykładach.</div>
-        <button onclick="switchTab('program')" class="btn-primary" style="font-size:11px; padding:6px 14px;">Przeglądaj Program</button>
+      <div style="text-align:center; padding:36px 16px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; margin-top:8px;">
+        <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:4px;">Twój plan jest pusty</div>
+        <div style="font-size:11.5px; color:#64748b; margin-bottom:14px;">Przejdź do zakładki „Program” i kliknij <strong>+ Dodaj do planu</strong> przy interesujących Cię wykładach.</div>
+        <button onclick="switchTab('program')" class="btn-primary" style="font-size:11.5px; padding:8px 16px;">Przeglądaj Program</button>
       </div>
     `;
-  } else {
-    container.innerHTML = html;
+    return;
   }
+
+  const calIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+
+  const dayKeys = ['day-1', 'day-2', 'day-3'];
+  let fullHtml = '';
+
+  dayKeys.forEach(dKey => {
+    const slots = CALENDAR_SLOTS[dKey] || [];
+    const dayHtml = buildTimelineHTML(slots, true);
+
+    if (dayHtml.trim()) {
+      fullHtml += `
+        <div class="myplan-day-section" style="margin-bottom:24px;">
+          <div style="font-size:11.5px; font-weight:800; color:#1e3a8a; background:#e0f2fe; padding:6px 12px; border-radius:8px; margin-bottom:12px; display:inline-flex; align-items:center; letter-spacing:0.3px;">
+            ${calIcon} ${DAY_NAMES[dKey].toUpperCase()}
+          </div>
+          ${dayHtml}
+        </div>
+      `;
+    }
+  });
+
+  container.innerHTML = fullHtml;
 }
 
 function buildTimelineHTML(slots, onlyMyPlan) {
@@ -691,20 +710,20 @@ function switchTab(tabId) {
   
   const daysBar = document.getElementById('calendar-days-bar');
   const searchBar = document.getElementById('search-container');
-  if (daysBar && searchBar) {
-    if (tabId === 'program' || tabId === 'myplan') {
-      daysBar.classList.remove('hidden');
-      searchBar.classList.remove('hidden');
-    } else {
-      daysBar.classList.add('hidden');
-      searchBar.classList.add('hidden');
-    }
+  
+  if (tabId === 'program') {
+    if (daysBar) daysBar.classList.remove('hidden');
+    if (searchBar) searchBar.classList.remove('hidden');
+    refreshDayBadges();
+    renderProgramTimeline();
+  } else if (tabId === 'myplan') {
+    if (daysBar) daysBar.classList.add('hidden');
+    if (searchBar) searchBar.classList.remove('hidden');
+    renderMyPlanTimeline();
+  } else {
+    if (daysBar) daysBar.classList.add('hidden');
+    if (searchBar) searchBar.classList.add('hidden');
   }
-
-  refreshDayBadges();
-
-  if (tabId === 'program') renderProgramTimeline();
-  if (tabId === 'myplan') renderMyPlanTimeline();
 
   const input = document.getElementById('global-search-input');
   if (input && input.value.trim().length > 0) {
@@ -768,5 +787,6 @@ renderProgramTimeline();
 
 // Cykliczne odświeżanie statusu sesji na żywo
 setInterval(() => {
-  renderProgramTimeline();
+  if (currentActiveTab === 'program') renderProgramTimeline();
+  if (currentActiveTab === 'myplan') renderMyPlanTimeline();
 }, 60000);
