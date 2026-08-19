@@ -1,6 +1,6 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan, Haptyka Mobile
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów z Opisową Nawigacją Krok po Kroku, Mój Plan, Haptyka Mobile
  */
 
 // ================= 0. MODUŁ HAPTYKI (DOTYKOWEGO SPRZĘŻENIA ZWROTNEGO) =================
@@ -77,7 +77,70 @@ const QUESTIONS_BY_PIN = {
   }
 };
 
-// ================= 2. ANTY-HEJT I FILTR SPAMU =================
+// ================= 2. BAZA OPISOWEJ NAWIGACJI PO OBIEKCIE (MOCKED WAYFINDING) =================
+const VENUE_NAVIGATION_DATA = {
+  'SALA A': {
+    roomTitle: 'Sala Audytoryjna A (Główna)',
+    level: 'Poziom +1 (Skrzydło Północne)',
+    icon: '🏛️',
+    steps: [
+      'Z holu głównego skieruj się ku głównym schodom ruchomym (obok recepcji).',
+      'Wjedź schodami ruchomymi na 1. piętro.',
+      'Na górze skręć od razu w prawo – miń strefę kawową i stoisko Medtronic.',
+      'Wejście do Sali A znajduje się na końcu korytarza po lewej stronie (duże podwójne drzwi ze wskaźnikiem LED).'
+    ]
+  },
+  'SALA B': {
+    roomTitle: 'Sala Wykładowa B (Kliniczna)',
+    level: 'Poziom +1 (Skrzydło Południowe)',
+    icon: '🏥',
+    steps: [
+      'Z recepcji głównej skieruj się w lewo ku cichobieżnym Windom B.',
+      'Wjedź windą na 1. piętro (lub skorzystaj z klatki schodowej B).',
+      'Po wyjściu z windy kieruj się prosto korytarzem obok Stoiska OIL oraz strefy plakatowej.',
+      'Sala B znajduje się po prawej stronie naprzeciwko wejścia do strefy VIP Lounge.'
+    ]
+  },
+  'WARSZTAT': {
+    roomTitle: 'Sala Warsztatowa USG / Hands-On',
+    level: 'Poziom 0 (Parter - Strefa Praktyczna)',
+    icon: '🔬',
+    steps: [
+      'Będąc w holu głównym przy rejestracji, idź prosto wzdłuż głównego pasażu wystawienniczego.',
+      'Miń stoisko Philips oraz symulatory zabiegowe po prawej stronie.',
+      'Przejdź przez krótki przeszklony łącznik prowadzący do Strefy Symulacji Medycznej.',
+      'Sala Warsztatowa znajduje się bezpośrednio za łącznikiem (oznaczona niebieską tablicą HANDS-ON).'
+    ]
+  },
+  'FOYER': {
+    roomTitle: 'Foyer / Strefa Expo & Networking',
+    level: 'Poziom 0 & Poziom +1 (Hol Główny)',
+    icon: '☕',
+    steps: [
+      'Główna przestrzeń konferencyjna na parterze oraz antresoli.',
+      'Punkty kawowe i cateringowe są zlokalizowane po obu stronach wejścia głównego.',
+      'Stoiska partnerów strategicznych i punkt pomocy technicznej znajdują się w centralnej części holu.'
+    ]
+  }
+};
+
+function getNavigationGuide(roomShort) {
+  const cleanName = (roomShort || '').trim().toUpperCase();
+  for (const key in VENUE_NAVIGATION_DATA) {
+    if (cleanName.includes(key)) return VENUE_NAVIGATION_DATA[key];
+  }
+  return {
+    roomTitle: roomShort || 'Sala Konferencyjna',
+    level: 'Centrum Konferencyjne',
+    icon: '📍',
+    steps: [
+      'Skieruj się do punktu informacyjnego w holu głównym.',
+      'Sprawdź oznaczenia multimedialne na totemach LCD przy wejściach do sektorów.'
+    ]
+  };
+}
+
+// ================= 3. ANTY-HEJT I FILTR SPAMU =================
 const BANNED_PATTERNS = [
   /gej/i, /gay/i, /homo/i, /lesb/i, /trans/i,
   /kurw/i, /chuj/i, /jeb/i, /pierd/i, /pizd/i, /cwel/i, /debil/i, /idiot/i,
@@ -118,7 +181,7 @@ let currentActiveTab = 'program';
 let userCalendarPlan = JSON.parse(localStorage.getItem('med_conf_cal_plan') || '["d1_s2", "d2_s1"]');
 let searchOriginDay = null;
 
-// ================= 3. WYSZUKIWARKA & BADGE DNI =================
+// ================= 4. WYSZUKIWARKA & BADGE DNI =================
 window.runLiveSearch = function(rawVal) {
   const rawQ = (rawVal || '').trim();
   const q = cleanString(rawQ);
@@ -359,7 +422,7 @@ function updateMyPlanCount() {
   if (countEl) countEl.innerText = userCalendarPlan.length;
 }
 
-// ================= 4. SPRAWDZANIE STATUSU NA ŻYWO =================
+// ================= 5. SPRAWDZANIE STATUSU NA ŻYWO =================
 const CONFERENCE_DATES = {
   'day-1': '2026-04-24',
   'day-2': '2026-04-25',
@@ -386,7 +449,7 @@ function isSlotCurrentlyLive(dayKey, timeSlotStr) {
   }
 }
 
-// ================= 5. RENDEROWANIE OSI CZASU =================
+// ================= 6. RENDEROWANIE OSI CZASU =================
 function renderProgramTimeline() {
   const container = document.getElementById('program-timeline');
   if (!container) return;
@@ -495,7 +558,7 @@ function buildTimelineHTML(slots, onlyMyPlan) {
   return output;
 }
 
-// ================= 6. MODAL SZCZEGÓŁÓW SESJI =================
+// ================= 7. MODAL SZCZEGÓŁÓW SESJI Z OPISOWĄ NAWIGACJĄ KROK PO KROKU =================
 function findSessionById(sessionId) {
   for (const dayKey in CALENDAR_SLOTS) {
     for (const slot of CALENDAR_SLOTS[dayKey]) {
@@ -520,30 +583,65 @@ function openSessionModal(sessionId) {
 
   const { session, timeSlot, dayLabel } = data;
   const isSelected = userCalendarPlan.includes(session.id);
+  const nav = getNavigationGuide(session.roomShort);
+
   const modal = document.getElementById('session-modal');
   const modalBody = document.getElementById('modal-body');
   if (!modal || !modalBody) return;
 
   const descriptionHtml = session.description 
-    ? `<div class="modal-desc">${session.description}</div>`
-    : `<div class="modal-desc" style="color:#94a3b8; font-style:italic;">Brak dodatkowego opisu sesji.</div>`;
+    ? `<div class="modal-desc" style="margin-bottom:12px;">${session.description}</div>`
+    : `<div class="modal-desc" style="color:#94a3b8; font-style:italic; margin-bottom:12px;">Brak dodatkowego opisu sesji.</div>`;
+
+  // Renderowanie kroków nawigacji
+  const navStepsHtml = nav.steps.map((step, idx) => `
+    <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:6px;">
+      <span style="display:inline-flex; align-items:center; justify-content:center; width:17px; height:17px; background:#2563eb; color:#ffffff; font-size:9.5px; font-weight:800; border-radius:50%; flex-shrink:0; margin-top:1px;">${idx + 1}</span>
+      <span style="font-size:11px; color:#334155; line-height:1.4;">${step}</span>
+    </div>
+  `).join('');
 
   modalBody.innerHTML = `
-    <div class="modal-meta-row">
+    <div class="modal-meta-row" style="margin-bottom:10px;">
       <span class="modal-badge">📅 ${dayLabel}</span>
       <span class="modal-badge">🕒 ${timeSlot}</span>
-      <span class="modal-badge">📍 ${session.roomShort || 'Główna'}</span>
+      <span class="modal-badge" style="background:#eff6ff; color:#1e3a8a; font-weight:700;">📍 ${session.roomShort || 'Główna'}</span>
     </div>
-    <div class="modal-title">${session.title}</div>
-    <div class="modal-speaker-box">
+
+    <div class="modal-title" style="margin-bottom:8px;">${session.title}</div>
+    
+    <div class="modal-speaker-box" style="margin-bottom:12px;">
       <div>
-        <div style="font-size:11px; color:#64748b; font-weight:600;">PRELEGENT / PROWADZĄCY</div>
+        <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">PRELEGENT / PROWADZĄCY</div>
         <div class="modal-speaker-name">${session.speaker || 'Komitet Organizacyjny'}</div>
       </div>
     </div>
+
     ${descriptionHtml}
+
+    <!-- KARTA OPISOWEJ NAWIGACJI PO OBIEKCIE (WAYFINDING) -->
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+        <span style="font-size:11.5px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+          <span>${nav.icon}</span> ${nav.roomTitle}
+        </span>
+        <span style="font-size:10px; font-weight:700; color:#2563eb; background:#dbeafe; padding:2px 7px; border-radius:6px;">
+          ${nav.level}
+        </span>
+      </div>
+
+      <div style="font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.3px;">
+        🚶‍♂️ Wskazówki dojścia (Krok po kroku):
+      </div>
+
+      <div style="background:#ffffff; border:1px dashed #cbd5e1; padding:9px 10px; border-radius:8px;">
+        ${navStepsHtml}
+      </div>
+    </div>
+
+    <!-- AKCJA MOJEGO PLANU -->
     ${!session.isBreak ? `
-      <button onclick="toggleCalendarSession('${session.id}'); openSessionModal('${session.id}');" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px; margin-top:12px;">
+      <button onclick="toggleCalendarSession('${session.id}'); openSessionModal('${session.id}');" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px;">
         ${isSelected ? '✓ USUŃ Z MOJEGO PLANU' : '+ DODAJ DO MOJEGO PLANU'}
       </button>
     ` : ''}
@@ -564,7 +662,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSessionModal();
 });
 
-// ================= 7. OBSŁUGA QUIZU & PIN =================
+// ================= 8. OBSŁUGA QUIZU & PIN =================
 function loadQuestionFromWelcome() {
   const pin = document.getElementById('main-pin-input').value.trim();
   processPin(pin);
@@ -659,7 +757,7 @@ function castVote(selectedKey, optionsData) {
   });
 }
 
-// ================= 8. Q&A Z FILTREM =================
+// ================= 9. Q&A Z FILTREM =================
 function openQuestionForm() {
   triggerHaptic('light');
   document.getElementById('qa-form-closed').classList.add('hidden');
@@ -734,7 +832,7 @@ function submitDedicatedQuestion() {
   showToast('✓ Wysłano Twoje pytanie do prelegenta');
 }
 
-// ================= 9. ZAKŁADKI =================
+// ================= 10. ZAKŁADKI =================
 function switchTab(tabId) {
   triggerHaptic('light');
   currentActiveTab = tabId;
@@ -782,7 +880,7 @@ function showToast(text) {
   setTimeout(() => { toast.classList.add('hidden'); }, 1800);
 }
 
-// ================= 10. OBSŁUGA PWA I SERVICE WORKERA =================
+// ================= 11. OBSŁUGA PWA I SERVICE WORKERA =================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
@@ -844,7 +942,7 @@ setInterval(() => {
   if (currentActiveTab === 'myplan') renderMyPlanTimeline();
 }, 60000);
 
-// ================= 11. SPLASH SCREEN (TIMER + POWITANIE HAPTYCZNE) =================
+// ================= 12. SPLASH SCREEN (TIMER + POWITANIE HAPTYCZNE) =================
 (function initSafeSplashScreen() {
   const splash = document.getElementById('app-splash-screen');
   if (!splash) return;
