@@ -1,30 +1,34 @@
-const CACHE_NAME = 'skd-2026-v8';
+// Service Worker SKD 2026 - Wymuszenie aktualizacji
+const CACHE_NAME = 'skd-2026-v2.3.0';
 
-const ASSETS_TO_CACHE = [
-  '/',
+const PRECACHE_ASSETS = [
   '/app.html',
   '/css/style.css',
-  '/app.js',
+  '/css/splash.css',
   '/data/schedule.js',
+  '/app.js',
   '/manifest.json'
 ];
 
+// Instalacja i natychmiastowe pominięcie oczekiwania
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
 });
 
+// Aktywacja i wyczyszczenie starych wersji cache
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Usuwanie starego cache PWA:', cache);
+            return caches.delete(cache);
           }
         })
       );
@@ -32,6 +36,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Strategia Network-First (zawsze sprawdzaj sieć najpierw dla HTML/JS/CSS)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
@@ -44,6 +49,8 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
