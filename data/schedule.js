@@ -37,7 +37,7 @@ const CALENDAR_SLOTS = {
     },
     {
       timeSlot: '10:45 - 12:15',
-      isLiveNow: true,
+      isLiveNow: false,
       isBreak: false,
       sessions: [
         { id: 'd1_s2', isBreak: false, roomShort: 'SALA A', title: 'Ostre zespoły wieńcowe u chorych z cukrzycą typu 2', speaker: 'prof. dr hab. n. med. Andrzej Nowak' },

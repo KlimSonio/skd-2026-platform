@@ -305,6 +305,50 @@ function updateMyPlanCount() {
   const countEl = document.getElementById('nav-my-count');
   if (countEl) countEl.innerText = userCalendarPlan.length;
 }
+// Mapowanie dni na konkretne daty kongresu
+const CONFERENCE_DATES = {
+  'day-1': '2026-04-24',
+  'day-2': '2026-04-25',
+  'day-3': '2026-04-26'
+};
+
+/**
+ * Sprawdza czy dany slot czasowy trwa w tym momencie
+ * @param {string} dayKey - np. 'day-1'
+ * @param {string} timeSlotStr - np. '08:00 - 09:00'
+ * @returns {boolean}
+ */
+function isSlotCurrentlyLive(dayKey, timeSlotStr) {
+  if (!timeSlotStr || !timeSlotStr.includes('-')) return false;
+
+  const now = new Date();
+  
+  // Format YYYY-MM-DD dla aktualnego dnia
+  const nowYear = now.getFullYear();
+  const nowMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const nowDay = String(now.getDate()).padStart(2, '0');
+  const currentDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
+
+  const targetDateStr = CONFERENCE_DATES[dayKey];
+  
+  // Jeśli dzisiaj nie jest ten dzień konferencji -> false
+  // (Na czas testów przed konferencją: jeśli chcesz przetestować działanie "na sucho", możesz zakomentować poniższą linię)
+  //if (currentDateStr !== targetDateStr) return false;
+
+  try {
+    const [startStr, endStr] = timeSlotStr.split('-').map(s => s.trim());
+    const [startH, startM] = startStr.split(':').map(Number);
+    const [endH, endM] = endStr.split(':').map(Number);
+
+    const startTime = new Date(nowYear, now.getMonth(), now.getDate(), startH, startM, 0);
+    const endTime = new Date(nowYear, now.getMonth(), now.getDate(), endH, endM, 0);
+
+    return now >= startTime && now < endTime;
+  } catch (err) {
+    console.error('Błąd parsowania czasu slotu:', err);
+    return false;
+  }
+}
 
 function renderProgramTimeline() {
   const container = document.getElementById('program-timeline');
@@ -342,16 +386,20 @@ function buildTimelineHTML(slots, onlyMyPlan) {
 
     if (visibleSessions.length === 0) return;
 
+    // Sprawdzamy czy slot trwa w tej chwili (lub ma na sztywno ustawione isLiveNow)
+    const isLive = slot.isLiveNow || isSlotCurrentlyLive(currentGlobalDay, slot.timeSlot);
+
     let sessionsHtml = '<div class="session-cards">';
     visibleSessions.forEach(sess => {
       const searchData = cleanString(`${sess.title} ${sess.speaker} ${sess.roomShort}`);
       
       if (sess.isBreak) {
         sessionsHtml += `
-          <div class="card break-card" data-search="${searchData}">
+          <div class="card break-card ${isLive ? 'is-live' : ''}" data-search="${searchData}">
             <div class="card-head">
               <span class="badge-break">ORGANIZACYJNA</span>
-              <span style="font-size:9.5px; font-weight:700; color:#64748b;">${sess.roomShort}</span>
+              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TERAZ</span>' : ''}
+              <span style="font-size:9.5px; font-weight:700; color:#64748b; margin-left:auto;">${sess.roomShort}</span>
             </div>
             <div class="card-title">${sess.title}</div>
             <div class="card-speaker">${sess.speaker}</div>
@@ -360,9 +408,10 @@ function buildTimelineHTML(slots, onlyMyPlan) {
       } else {
         const isSelected = userCalendarPlan.includes(sess.id);
         sessionsHtml += `
-          <div class="card ${isSelected ? 'selected' : ''}" data-search="${searchData}">
+          <div class="card ${isSelected ? 'selected' : ''} ${isLive ? 'is-live' : ''}" data-search="${searchData}">
             <div class="card-head">
               <span class="badge-room">${sess.roomShort}</span>
+              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TERAZ</span>' : ''}
               <button onclick="toggleCalendarSession('${sess.id}')" class="btn-add-plan ${isSelected ? 'in-plan' : ''}">
                 ${isSelected ? '✓ W TWOIM PLANIE' : '+ Dodaj do planu'}
               </button>
@@ -376,12 +425,12 @@ function buildTimelineHTML(slots, onlyMyPlan) {
     sessionsHtml += '</div>';
 
     output += `
-      <div class="session-slot">
+      <div class="session-slot ${isLive ? 'slot-live' : ''}">
         <div class="time-col">
           <div class="time-start" style="${slot.isBreak ? 'color:#64748b;' : ''}">${slot.timeSlot.split(' - ')[0]}</div>
           <div class="time-end">${slot.timeSlot.split(' - ')[1]}</div>
         </div>
-        <div class="t-dot ${slot.isLiveNow ? 'live' : ''} ${slot.isBreak ? 'break' : ''}"></div>
+        <div class="t-dot ${isLive ? 'live' : ''} ${slot.isBreak ? 'break' : ''}"></div>
         ${sessionsHtml}
       </div>
     `;
@@ -644,3 +693,8 @@ if (isIos && !isInStandaloneMode && installCard) {
 // Inicjalizacja startowa
 updateMyPlanCount();
 renderProgramTimeline();
+
+// Cykliczne odświeżanie statusu sesji na żywo
+setInterval(() => {
+  renderProgramTimeline();
+}, 60000);
