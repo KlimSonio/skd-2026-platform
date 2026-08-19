@@ -1,23 +1,14 @@
-const CACHE_NAME = 'skd-2026-v6';
+const CACHE_NAME = 'skd-2026-v8';
 
 const ASSETS_TO_CACHE = [
   '/',
   '/app.html',
+  '/css/style.css',
   '/app.js',
-  '/manifest.json',
-  '/assets/Images/logo_konferencja_skd_2026_250x146_01.png',
-  '/assets/Images/Abbott.webp',
-  '/assets/Images/ai_body.png',
-  '/assets/Images/BostonScientific.webp',
-  '/assets/Images/GE.webp',
-  '/assets/Images/hammermed-logo.webp',
-  '/assets/Images/Medtronic.webp',
-  '/assets/Images/Phillips.webp',
-  '/assets/Images/Samsung_Orig_Lettermark_BLUE_RGB.webp',
-  '/assets/Images/Symico.webp'
+  '/data/schedule.js',
+  '/manifest.json'
 ];
 
-// 1. Natychmiastowe przejście do działania
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -27,7 +18,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. Usunięcie wszystkich starych wersji cache
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -42,10 +32,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Strategia Network-First z fallbackiem do cache
 self.addEventListener('fetch', (event) => {
-  if (!event.request.url.startsWith('http')) return;
-
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -57,8 +44,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+      .catch(() => caches.match(event.request))
   );
 });

@@ -155,7 +155,6 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
     else slot.classList.add('hidden');
   });
 
-  // Ukryj puste sekcje dni w Moim Planie jeśli żaden slot nie pasuje
   if (currentActiveTab === 'myplan') {
     const daySections = container.querySelectorAll('.myplan-day-section');
     daySections.forEach(sec => {
@@ -742,9 +741,19 @@ function showToast(text) {
 // ================= 10. OBSŁUGA PWA I SERVICE WORKERA =================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      reg.update();
+    }).catch((err) => {
       console.log('SW registration skipped:', err);
     });
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
 
