@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skd-2026-v4';
+const CACHE_NAME = 'skd-2026-v6';
 
 const ASSETS_TO_CACHE = [
   '/',
