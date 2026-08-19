@@ -1,0 +1,6 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'>
+  <rect width='512' height='512' rx='100' fill='#0f172a'/>
+  <circle cx='256' cy='256' r='180' fill='#1e293b' stroke='#38bdf8' stroke-width='16'/>
+  <path d='M160 270 L220 270 L240 200 L270 330 L300 240 L320 270 L352 270' fill='none' stroke='#38bdf8' stroke-width='24' stroke-linecap='round' stroke-linejoin='round'/>
+  <text x='256' y='400' font-family='system-ui, sans-serif' font-size='48' font-weight='bold' fill='#ffffff' text-anchor='middle'>SKD 2026</text>
+</svg>

@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pl" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical Events – Panel Administratora</title>
+  
+  <!-- Skrypt QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Arial', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: Arial, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+    }
+    #admin-sig-canvas { touch-action: none; }
+  </style>
+  <script type="module" crossorigin src="/assets/admin-C3ojmlNM.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-P2Xu9kJm.js">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-full flex flex-col antialiased">
+
+  <!-- Pasek górny -->
+  <header class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-40 shadow-xs">
+    <div class="flex items-center gap-3">
+      <img 
+        src="/logo.png" 
+        alt="Medical Events Logo" 
+        class="h-8 w-auto object-contain"
+        onerror="this.onerror=null; this.src='https://medicalevents.pl/wp-content/uploads/2023/04/logo-medical-events.png';" 
+      />
+      <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+      <div>
+        <h1 class="text-sm font-bold tracking-tight text-slate-900 leading-tight">Panel Administratora</h1>
+        <span id="header-mode-indicator" class="text-xs text-slate-500 font-normal">Tryb: Rejestracja & Finanse</span>
+      </div>
+    </div>
+
+    <!-- Przełącznik Etapów -->
+    <div class="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs font-semibold">
+      <button id="btn-mode-pre" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all bg-white text-slate-900 border border-slate-200 shadow-2xs">
+        <span>📋</span>
+        <span>Rejestracja & Finanse</span>
+      </button>
+      <button id="btn-mode-event" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900">
+        <span>🎟️</span>
+        <span>Dzień Konferencji</span>
+      </button>
+    </div>
+
+    <!-- Narzędzia -->
+    <div class="flex items-center gap-2">
+      <button id="btn-open-create-modal" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-2xs">
+        <span class="text-sm leading-none">+</span>
+        <span>Dodaj uczestnika</span>
+      </button>
+      <a href="/badges.html" target="_blank" class="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+        <span>🪪 Identyfikatory ↗</span>
+      </a>
+      <a href="/" target="_blank" class="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+        <span>Terminal ↗</span>
+      </a>
+      <button id="btn-export-csv" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shadow-2xs">
+        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>Eksport CSV</span>
+      </button>
+      <button id="btn-refresh" title="Odśwież dane" class="bg-white hover:bg-slate-50 text-slate-600 p-1.5 rounded-lg transition border border-slate-200 shadow-2xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Główna zawartość -->
+  <main class="flex-1 w-full max-w-[1500px] mx-auto p-4 sm:p-6 flex flex-col gap-4">
+
+    <!-- Subtelny pasek statusu trybu -->
+    <div id="subbar-pre" class="bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+      <div>
+        <span class="text-xs font-bold text-slate-900 block">Etap przedkonferencyjny – Baza zgłoszeń i rozliczenia</span>
+        <span class="text-xs text-slate-500">Weryfikacja płatności, uprawnień do pakietów oraz przygotowanie identyfikatorów.</span>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <div class="text-slate-600">Rozliczone: <strong id="subbar-pre-ratio" class="text-slate-900">0 / 0</strong></div>
+        <div class="h-4 w-px bg-slate-200"></div>
+        <div class="text-slate-600">Wskaźnik opłat: <strong id="subbar-pre-pct" class="text-slate-900">0%</strong></div>
+      </div>
+    </div>
+
+    <div id="subbar-event" class="hidden bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="text-xs font-bold text-slate-900 block">Dzień Konferencji – Recepcja i Odprawa na żywo</span>
+        </div>
+        <span class="text-xs text-slate-500">Wydawanie identyfikatorów, kontrola obecności na sali oraz audyt podpisów.</span>
+      </div>
+      <div class="flex items-center gap-4 text-xs">
+        <div class="text-slate-600">Obecni na sali: <strong id="subbar-event-ratio" class="text-slate-900">0 / 0</strong></div>
+        <div class="h-4 w-px bg-slate-200"></div>
+        <div class="text-slate-600">Frekwencja: <strong id="subbar-event-pct" class="text-slate-900">0%</strong></div>
+      </div>
+    </div>
+
+    <!-- Alert błędu podpisów -->
+    <div id="sig-warning-banner" class="hidden bg-amber-50/70 border border-amber-200 text-amber-900 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <span class="font-bold">⚠️ Uwaga:</span>
+        <span>Wykryto problem z plikiem podpisu u odprawionych uczestników (<span id="banner-error-count">0</span>).</span>
+      </div>
+      <button id="btn-filter-sig-errors" class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold px-3 py-1 rounded-md transition border border-amber-300">
+        Pokaż błędy
+      </button>
+    </div>
+
+    <!-- KAFELKI KPI: ETAP 1 -->
+    <div id="kpi-pre" class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div data-stat-filter="all" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Zarejestrowani</div>
+        <div id="stat-pre-total" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">Wszystkie zgłoszenia w bazie</div>
+      </div>
+
+      <div data-stat-filter="paid" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Opłacone</div>
+        <div id="stat-pre-paid" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Wpłaty zaksięgowane</div>
+      </div>
+
+      <div data-stat-filter="exempt" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">VIP / Zwolnieni / Sponsor</div>
+        <div id="stat-pre-exempt" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Uczestnicy bezpłatni</div>
+      </div>
+
+      <div data-stat-filter="unpaid" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Nieopłacone (Do wpłaty)</div>
+        <div id="stat-pre-unpaid" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Wymaga wyjaśnienia</div>
+      </div>
+    </div>
+
+    <!-- KAFELKI KPI: ETAP 2 -->
+    <div id="kpi-event" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div data-stat-filter="all" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Baza uczestników</div>
+        <div id="stat-event-total" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-400 mt-0.5">Osoby uprawnione</div>
+      </div>
+
+      <div data-stat-filter="attended" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Wydano identyfikatory</div>
+        <div id="stat-event-attended" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Obecni na wydarzeniu</div>
+      </div>
+
+      <div data-stat-filter="pending" class="stat-card cursor-pointer bg-white border border-slate-200 rounded-xl p-4 shadow-2xs hover:border-slate-300 transition">
+        <div class="text-xs text-slate-500 font-medium">Oczekujący na recepcji</div>
+        <div id="stat-event-pending" class="text-2xl font-bold text-slate-900 mt-1">0</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Przed odprawą</div>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs">
+        <div class="text-xs text-slate-500 font-medium">Aktualna Frekwencja</div>
+        <div id="stat-event-percentage" class="text-2xl font-bold text-slate-900 mt-1">0%</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">Udział w czasie rzeczywistym</div>
+      </div>
+    </div>
+
+    <!-- Filtry i Szukajka -->
+    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col gap-3">
+      <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+        <div class="relative flex-1">
+          <input 
+            id="search-input" 
+            type="text" 
+            placeholder="Szukaj po nazwisku, imieniu, PWZ, emailu, tokenie..." 
+            class="w-full bg-slate-50/70 border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white transition"
+          />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+
+        <div id="quick-filters-container" class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 text-xs"></div>
+      </div>
+
+      <div class="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-500 mb-1">Pakiet / Warsztat</label>
+          <select id="filter-package" class="w-full bg-slate-50/70 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-slate-500"></select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-500 mb-1">Kryterium PWZ</label>
+          <select id="filter-pwz" class="w-full bg-slate-50/70 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-slate-500">
+            <option value="all">Wszyscy uczestnicy</option>
+            <option value="with_pwz">Tylko z numerem PWZ (Lekarze)</option>
+            <option value="without_pwz">Bez numeru PWZ</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="btn-reset-filters" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-1.5 px-3 rounded-lg text-xs font-semibold transition">
+            Wyczyść filtry
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela uczestników -->
+    <div class="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead id="table-head" class="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600"></thead>
+          <tbody id="attendees-tbody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: Dodawanie uczestnika -->
+  <div id="create-attendee-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-5 shadow-xl flex flex-col gap-4 my-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div>
+          <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Nowe zgłoszenie</span>
+          <h3 class="font-bold text-slate-900 text-base">Dodaj uczestnika do bazy</h3>
+        </div>
+        <button id="btn-close-create-modal" class="text-slate-400 hover:text-slate-700 text-base font-bold">✕</button>
+      </div>
+
+      <form id="create-attendee-form" class="flex flex-col gap-3 text-left text-xs">
+        <div class="grid grid-cols-1 gap-2">
+          <div class="relative">
+            <label class="block font-medium text-slate-700 mb-1">Tytuł naukowy / zawodowy</label>
+            <input type="text" id="create-academic-title" autocomplete="off" placeholder="Wpisz np. hab, dr, prof..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+            
+            <!-- Lista podpowiedzi live -->
+            <div id="create-academic-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 divide-y divide-slate-100"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Imię *</label>
+            <input type="text" id="create-first-name" required placeholder="Jan" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Nazwisko *</label>
+            <input type="text" id="create-last-name" required placeholder="Kowalski" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Numer PWZ</label>
+            <input type="text" id="create-pwz" placeholder="np. 1234567" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">E-mail</label>
+            <input type="email" id="create-email" placeholder="jan.kowalski@szpital.pl" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Pakiety / Warsztaty (rozdziel przecinkami)</label>
+          <input type="text" id="create-packages" placeholder="np. Warsztat USG, Kurs EKG" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Status płatności</label>
+          <select id="create-payment-status" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500">
+            <option value="paid">Opłacone</option>
+            <option value="exempt">Zwolniony / Sponsor / VIP</option>
+            <option value="unpaid" selected>Nieopłacone</option>
+          </select>
+        </div>
+
+        <div class="flex gap-2 pt-2 border-t border-slate-100">
+          <button type="button" id="btn-cancel-create" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2 rounded-lg transition">
+            Anuluj
+          </button>
+          <button type="submit" id="btn-save-create" class="w-2/3 bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 rounded-lg transition shadow-2xs">
+            ✓ Zapisz i wygeneruj QR
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Wygenerowany QR -->
+  <div id="qr-success-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-xs w-full p-5 shadow-xl flex flex-col items-center text-center gap-2.5 my-auto">
+      <div class="w-10 h-10 bg-slate-100 text-slate-800 rounded-full flex items-center justify-center text-base font-bold">✓</div>
+      <h3 class="font-bold text-slate-900 text-sm">Uczestnik dodany pomyślnie</h3>
+      <p id="qr-success-name" class="text-xs text-slate-600"></p>
+      <div id="new-attendee-qrcode" class="p-2 bg-white border border-slate-200 rounded-xl my-1 flex justify-center"></div>
+      <div class="text-[11px] font-mono text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded" id="qr-success-token"></div>
+      <button id="btn-close-qr-success" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 rounded-lg transition mt-1">
+        Zamknij
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: Edycja uczestnika -->
+  <div id="edit-attendee-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-5 shadow-xl flex flex-col gap-4 my-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div>
+          <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Edycja rekordu</span>
+          <h3 id="edit-modal-title" class="font-bold text-slate-900 text-base">Edycja uczestnika</h3>
+        </div>
+        <button id="btn-close-edit-modal" class="text-slate-400 hover:text-slate-700 text-base font-bold">✕</button>
+      </div>
+
+      <form id="edit-attendee-form" class="flex flex-col gap-3 text-left text-xs">
+        <input type="hidden" id="edit-id" />
+        <div class="grid grid-cols-1 gap-2">
+          <div class="relative">
+            <label class="block font-medium text-slate-700 mb-1">Tytuł naukowy / zawodowy</label>
+            <input type="text" id="edit-academic-title" autocomplete="off" placeholder="Wpisz np. hab, dr, prof..." class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+            
+            <!-- Lista podpowiedzi live -->
+            <div id="edit-academic-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50 divide-y divide-slate-100"></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Imię *</label>
+            <input type="text" id="edit-first-name" required class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Nazwisko *</label>
+            <input type="text" id="edit-last-name" required class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Numer PWZ</label>
+            <input type="text" id="edit-pwz" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">E-mail</label>
+            <input type="email" id="edit-email" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Pakiety / Warsztaty</label>
+          <input type="text" id="edit-packages" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Status płatności</label>
+            <select id="edit-payment-status" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-900 focus:outline-none focus:border-slate-500">
+              <option value="paid">Opłacone</option>
+              <option value="exempt">Zwolniony / Sponsor / VIP</option>
+              <option value="unpaid">Nieopłacone</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Token QR</label>
+            <input type="text" id="edit-qr-token" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-slate-900 uppercase focus:outline-none focus:border-slate-500 focus:bg-white" />
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2 border-t border-slate-100">
+          <button type="button" id="btn-cancel-edit" class="w-1/3 bg-slate-100 text-slate-700 font-semibold py-2 rounded-lg transition">Anuluj</button>
+          <button type="submit" id="btn-save-edit" class="w-2/3 bg-slate-900 text-white font-semibold py-2 rounded-lg shadow-2xs transition">Zapisz zmiany</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Podgląd podpisu -->
+  <div id="sig-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-4 shadow-xl flex flex-col gap-3 text-center my-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h3 id="sig-modal-name" class="font-bold text-slate-900 text-sm truncate">Podpis uczestnika</h3>
+        <button id="btn-close-sig-modal" class="text-slate-400 hover:text-slate-700 text-base font-bold">✕</button>
+      </div>
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-center min-h-[140px]">
+        <img id="sig-modal-img" src="" alt="Podpis cyfrowy" class="max-h-36 object-contain" />
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
