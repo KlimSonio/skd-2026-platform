@@ -1,6 +1,6 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan (Widok Ciągły)
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan (Widok Ciągły), Splash Screen Auto-Remove
  */
 
 // ================= 1. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
@@ -799,3 +799,19 @@ setInterval(() => {
   if (currentActiveTab === 'program') renderProgramTimeline();
   if (currentActiveTab === 'myplan') renderMyPlanTimeline();
 }, 60000);
+
+// ================= 11. SPLASH SCREEN (BEZPIECZNY TIMER + AUTO-REMOVE) =================
+(function initSafeSplashScreen() {
+  const splash = document.getElementById('app-splash-screen');
+  if (!splash) return;
+
+  setTimeout(() => {
+    splash.classList.add('splash-hidden');
+    // Po wygaśnięciu (fade-out) całkowicie usuwamy element z drzewa DOM
+    setTimeout(() => {
+      if (splash && splash.parentNode) {
+        splash.parentNode.removeChild(splash);
+      }
+    }, 450);
+  }, 4000);
+})();

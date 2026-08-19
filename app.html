@@ -13,10 +13,33 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SKD 2026">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <link rel="stylesheet" href="css/style.css">
   
+  <!-- Główny styl aplikacji (nienaruszony) -->
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Dedykowany, odizolowany moduł ekranu startowego -->
+  <link rel="stylesheet" href="css/splash.css">
 </head>
 <body>
+
+  <!-- SPLASH SCREEN STARTOWY (POZA STRUKTURĄ APP-FRAME) -->
+  <div id="app-splash-screen">
+    <div class="splash-content">
+      <img src="https://konferencjaskd2026.pl/wp-content/uploads/2025/11/logo_konferencja_skd_2026_250x146_01.png" alt="SKD 2026" class="splash-logo" />
+      
+      <div class="infinity-spinner">
+        <svg class="heart-spinner left-heart" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+        <svg class="heart-spinner right-heart" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+      </div>
+      
+      <div class="splash-progress-track">
+        <div class="splash-progress-fill"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="app-frame">
 
@@ -206,16 +229,16 @@
   </div>
 
   <!-- Modal szczegółów panelu -->
-<div id="session-modal" class="modal-overlay" style="display: none;">
-  <div class="modal-backdrop" onclick="closeSessionModal()"></div>
-  <div class="modal-dialog">
-    <button class="modal-close-btn" onclick="closeSessionModal()" aria-label="Zamknij">&times;</button>
-    <div id="modal-body"></div>
+  <div id="session-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-backdrop" onclick="closeSessionModal()"></div>
+    <div class="modal-dialog">
+      <button class="modal-close-btn" onclick="closeSessionModal()" aria-label="Zamknij">&times;</button>
+      <div id="modal-body"></div>
+    </div>
   </div>
-</div>
 
   <!-- WERSJONOWANY SKRYPT JS -->
-   <script src="data/schedule.js?v=2.0.5"></script>
+  <script src="data/schedule.js?v=2.0.5"></script>
   <script src="app.js?v=2.0.5"></script>
 </body>
 </html>
