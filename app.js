@@ -1,9 +1,9 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów, Mój Plan Badge
  */
 
-// ================= 2. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
+// ================= 1. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
 const QUESTIONS_BY_PIN = {
   '1040': {
     pin: '1040', roomShort: 'SALA A', session: 'Sesja II: Kardiologia Interwencyjna',
@@ -46,7 +46,7 @@ const QUESTIONS_BY_PIN = {
   }
 };
 
-// ================= 3. ANTY-HEJT I FILTR BEŁKOTU =================
+// ================= 2. ANTY-HEJT I FILTR SPAMU =================
 const BANNED_PATTERNS = [
   /gej/i, /gay/i, /homo/i, /lesb/i, /trans/i,
   /kurw/i, /chuj/i, /jeb/i, /pierd/i, /pizd/i, /cwel/i, /debil/i, /idiot/i,
@@ -87,7 +87,7 @@ let currentActiveTab = 'program';
 let userCalendarPlan = JSON.parse(localStorage.getItem('med_conf_cal_plan') || '["d1_s2", "d2_s1"]');
 let searchOriginDay = null;
 
-// ================= 4. WYSZUKIWARKA Z SMART AUTO-SWITCH =================
+// ================= 3. WYSZUKIWARKA & BADGE DNI =================
 window.runLiveSearch = function(rawVal) {
   const rawQ = (rawVal || '').trim();
   const q = cleanString(rawQ);
@@ -103,7 +103,7 @@ window.runLiveSearch = function(rawVal) {
       switchGlobalDay(searchOriginDay, false);
     }
     searchOriginDay = null;
-    updateDayBadgesFromCounts({ 'day-1': 0, 'day-2': 0, 'day-3': 0 }, '');
+    refreshDayBadges();
     return;
   }
 
@@ -231,6 +231,34 @@ function calculateResultsAcrossDays(cleanQ) {
   return counts;
 }
 
+function refreshDayBadges() {
+  const dayKeys = ['day-1', 'day-2', 'day-3'];
+  const dayBaseLabels = ['Pt (24.04)', 'Sob (25.04)', 'Nd (26.04)'];
+
+  dayKeys.forEach((dKey, index) => {
+    const btn = document.getElementById(`btn-day-${index + 1}`);
+    if (!btn) return;
+
+    if (currentActiveTab === 'myplan') {
+      const slots = CALENDAR_SLOTS[dKey] || [];
+      let countForDay = 0;
+      slots.forEach(slot => {
+        slot.sessions.forEach(s => {
+          if (!s.isBreak && userCalendarPlan.includes(s.id)) countForDay++;
+        });
+      });
+
+      if (countForDay > 0) {
+        btn.innerHTML = `${dayBaseLabels[index]} <span style="font-size:9.5px; padding:1px 5px; border-radius:10px; font-weight:800; background:#dbeafe; color:#1e3a8a;">(${countForDay})</span>`;
+      } else {
+        btn.innerText = dayBaseLabels[index];
+      }
+    } else {
+      btn.innerText = dayBaseLabels[index];
+    }
+  });
+}
+
 function updateDayBadgesFromCounts(counts, cleanQ) {
   const dayKeys = ['day-1', 'day-2', 'day-3'];
   const dayBaseLabels = ['Pt (24.04)', 'Sob (25.04)', 'Nd (26.04)'];
@@ -240,7 +268,7 @@ function updateDayBadgesFromCounts(counts, cleanQ) {
     if (!btn) return;
 
     if (!cleanQ) {
-      btn.innerText = dayBaseLabels[index];
+      refreshDayBadges();
     } else {
       const count = counts[dKey];
       const badgeStyle = count > 0 ? 'background:#dbeafe; color:#1e3a8a;' : 'background:#f1f5f9; color:#94a3b8;';
@@ -288,6 +316,7 @@ function toggleCalendarSession(sessionId) {
   }
   localStorage.setItem('med_conf_cal_plan', JSON.stringify(userCalendarPlan));
   updateMyPlanCount();
+  refreshDayBadges();
   renderProgramTimeline();
   renderMyPlanTimeline();
 }
@@ -297,31 +326,17 @@ function updateMyPlanCount() {
   if (countEl) countEl.innerText = userCalendarPlan.length;
 }
 
-// Mapowanie dni na konkretne daty kongresu
+// ================= 4. SPRAWDZANIE STATUSU NA ŻYWO =================
 const CONFERENCE_DATES = {
   'day-1': '2026-04-24',
   'day-2': '2026-04-25',
   'day-3': '2026-04-26'
 };
 
-/**
- * Sprawdza czy dany slot czasowy trwa w tym momencie
- */
 function isSlotCurrentlyLive(dayKey, timeSlotStr) {
   if (!timeSlotStr || !timeSlotStr.includes('-')) return false;
 
   const now = new Date();
-  
-  const nowYear = now.getFullYear();
-  const nowMonth = String(now.getMonth() + 1).padStart(2, '0');
-  const nowDay = String(now.getDate()).padStart(2, '0');
-  const currentDateStr = `${nowYear}-${nowMonth}-${nowDay}`;
-
-  const targetDateStr = CONFERENCE_DATES[dayKey];
-  
-  // Odkomentuj na produkcję, aby uwzględniać rzeczywisty dzień konferencji:
-  // if (currentDateStr !== targetDateStr) return false;
-
   try {
     const [startStr, endStr] = timeSlotStr.split('-').map(s => s.trim());
     const [startH, startM] = startStr.split(':').map(Number);
@@ -338,6 +353,7 @@ function isSlotCurrentlyLive(dayKey, timeSlotStr) {
   }
 }
 
+// ================= 5. RENDEROWANIE OSI CZASU =================
 function renderProgramTimeline() {
   const container = document.getElementById('program-timeline');
   if (!container) return;
@@ -426,7 +442,7 @@ function buildTimelineHTML(slots, onlyMyPlan) {
   return output;
 }
 
-// ================= 5. MODAL SZCZEGÓŁÓW SESJI =================
+// ================= 6. MODAL SZCZEGÓŁÓW SESJI =================
 function findSessionById(sessionId) {
   for (const dayKey in CALENDAR_SLOTS) {
     for (const slot of CALENDAR_SLOTS[dayKey]) {
@@ -472,7 +488,7 @@ function openSessionModal(sessionId) {
     </div>
     ${descriptionHtml}
     ${!session.isBreak ? `
-      <button onclick="toggleCalendarSession('${session.id}'); openSessionModal('${session.id}');" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px;">
+      <button onclick="toggleCalendarSession('${session.id}'); openSessionModal('${session.id}');" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px; margin-top:12px;">
         ${isSelected ? '✓ USUŃ Z MOJEGO PLANU' : '+ DODAJ DO MOJEGO PLANU'}
       </button>
     ` : ''}
@@ -492,7 +508,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeSessionModal();
 });
 
-// ================= 6. OBSŁUGA QUIZU & PIN =================
+// ================= 7. OBSŁUGA QUIZU & PIN =================
 function loadQuestionFromWelcome() {
   const pin = document.getElementById('main-pin-input').value.trim();
   processPin(pin);
@@ -585,7 +601,7 @@ function castVote(selectedKey, optionsData) {
   });
 }
 
-// ================= 7. Q&A Z FILTREM =================
+// ================= 8. Q&A Z FILTREM =================
 function openQuestionForm() {
   document.getElementById('qa-form-closed').classList.add('hidden');
   document.getElementById('qa-form-opened').classList.remove('hidden');
@@ -657,7 +673,7 @@ function submitDedicatedQuestion() {
   showToast('✓ Wysłano Twoje pytanie do prelegenta');
 }
 
-// ================= 8. ZAKŁADKI =================
+// ================= 9. ZAKŁADKI =================
 function switchTab(tabId) {
   currentActiveTab = tabId;
 
@@ -685,6 +701,8 @@ function switchTab(tabId) {
     }
   }
 
+  refreshDayBadges();
+
   if (tabId === 'program') renderProgramTimeline();
   if (tabId === 'myplan') renderMyPlanTimeline();
 
@@ -702,7 +720,7 @@ function showToast(text) {
   setTimeout(() => { toast.classList.add('hidden'); }, 1800);
 }
 
-// ================= 9. OBSŁUGA PWA I SERVICE WORKERA =================
+// ================= 10. OBSŁUGA PWA I SERVICE WORKERA =================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
@@ -745,6 +763,7 @@ if (isIos && !isInStandaloneMode && installCard) {
 
 // Inicjalizacja startowa
 updateMyPlanCount();
+refreshDayBadges();
 renderProgramTimeline();
 
 // Cykliczne odświeżanie statusu sesji na żywo
