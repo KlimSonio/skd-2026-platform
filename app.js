@@ -1,10 +1,7 @@
 /**
  * Konferencja SKD 2026 - Hub Uczestnika
- * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA
+ * Logika: Kalendarz 3 dni, Smart Auto-Switch Search, Quizy PIN, Q&A Anty-Spam, PWA, Modal Szczegółów
  */
-
-
-
 
 // ================= 2. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
 const QUESTIONS_BY_PIN = {
@@ -88,7 +85,7 @@ let activeQuestionData = null;
 let currentGlobalDay = 'day-1';
 let currentActiveTab = 'program';
 let userCalendarPlan = JSON.parse(localStorage.getItem('med_conf_cal_plan') || '["d1_s2", "d2_s1"]');
-let searchOriginDay = null; // Pamięta dzień, z którego rozpoczęto wyszukiwanie
+let searchOriginDay = null;
 
 // ================= 4. WYSZUKIWARKA Z SMART AUTO-SWITCH =================
 window.runLiveSearch = function(rawVal) {
@@ -101,7 +98,6 @@ window.runLiveSearch = function(rawVal) {
     else clearBtn.classList.add('hidden');
   }
 
-  // Jeśli użytkownik skasował tekst, wracamy do dnia startowego
   if (q.length === 0) {
     if (searchOriginDay && searchOriginDay !== currentGlobalDay) {
       switchGlobalDay(searchOriginDay, false);
@@ -111,16 +107,13 @@ window.runLiveSearch = function(rawVal) {
     return;
   }
 
-  // Zapisz dzień, z którego wystartowano
   if (!searchOriginDay) {
     searchOriginDay = currentGlobalDay;
   }
 
-  // 1. Zlicz dopasowania we wszystkich 3 dniach
   const dayResults = calculateResultsAcrossDays(q);
   updateDayBadgesFromCounts(dayResults, q);
 
-  // 2. AUTO-SWITCH: Jeśli w bieżącym dniu 0, a DOKŁADNIE 1 inny dzień ma wyniki
   if (dayResults[currentGlobalDay] === 0) {
     const matchingDays = Object.keys(dayResults).filter(k => dayResults[k] > 0);
     
@@ -132,7 +125,6 @@ window.runLiveSearch = function(rawVal) {
     }
   }
 
-  // 3. Renderuj widoczne karty w bieżącym dniu
   filterActiveTimelineCards(q, rawQ, dayResults);
 };
 
@@ -163,7 +155,6 @@ function filterActiveTimelineCards(q, rawQ, dayResults) {
     else slot.classList.add('hidden');
   });
 
-  // Komunikat, gdy w obecnym dniu brak wyników
   let noRes = document.getElementById('search-no-results');
   if (currentDayMatches === 0 && q.length > 0) {
     const otherDaysWithHits = Object.keys(dayResults).filter(k => k !== currentGlobalDay && dayResults[k] > 0);
@@ -305,6 +296,7 @@ function updateMyPlanCount() {
   const countEl = document.getElementById('nav-my-count');
   if (countEl) countEl.innerText = userCalendarPlan.length;
 }
+
 // Mapowanie dni na konkretne daty kongresu
 const CONFERENCE_DATES = {
   'day-1': '2026-04-24',
@@ -314,16 +306,12 @@ const CONFERENCE_DATES = {
 
 /**
  * Sprawdza czy dany slot czasowy trwa w tym momencie
- * @param {string} dayKey - np. 'day-1'
- * @param {string} timeSlotStr - np. '08:00 - 09:00'
- * @returns {boolean}
  */
 function isSlotCurrentlyLive(dayKey, timeSlotStr) {
   if (!timeSlotStr || !timeSlotStr.includes('-')) return false;
 
   const now = new Date();
   
-  // Format YYYY-MM-DD dla aktualnego dnia
   const nowYear = now.getFullYear();
   const nowMonth = String(now.getMonth() + 1).padStart(2, '0');
   const nowDay = String(now.getDate()).padStart(2, '0');
@@ -331,19 +319,19 @@ function isSlotCurrentlyLive(dayKey, timeSlotStr) {
 
   const targetDateStr = CONFERENCE_DATES[dayKey];
   
-  // Jeśli dzisiaj nie jest ten dzień konferencji -> false
-  // (Na czas testów przed konferencją: jeśli chcesz przetestować działanie "na sucho", możesz zakomentować poniższą linię)
-  //if (currentDateStr !== targetDateStr) return false;
+  // Odkomentuj na produkcję, aby uwzględniać rzeczywisty dzień konferencji:
+  // if (currentDateStr !== targetDateStr) return false;
 
   try {
     const [startStr, endStr] = timeSlotStr.split('-').map(s => s.trim());
     const [startH, startM] = startStr.split(':').map(Number);
     const [endH, endM] = endStr.split(':').map(Number);
 
-    const startTime = new Date(nowYear, now.getMonth(), now.getDate(), startH, startM, 0);
-    const endTime = new Date(nowYear, now.getMonth(), now.getDate(), endH, endM, 0);
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
 
-    return now >= startTime && now < endTime;
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
   } catch (err) {
     console.error('Błąd parsowania czasu slotu:', err);
     return false;
@@ -386,7 +374,6 @@ function buildTimelineHTML(slots, onlyMyPlan) {
 
     if (visibleSessions.length === 0) return;
 
-    // Sprawdzamy czy slot trwa w tej chwili (lub ma na sztywno ustawione isLiveNow)
     const isLive = slot.isLiveNow || isSlotCurrentlyLive(currentGlobalDay, slot.timeSlot);
 
     let sessionsHtml = '<div class="session-cards">';
@@ -395,10 +382,10 @@ function buildTimelineHTML(slots, onlyMyPlan) {
       
       if (sess.isBreak) {
         sessionsHtml += `
-          <div class="card break-card ${isLive ? 'is-live' : ''}" data-search="${searchData}">
+          <div class="card break-card ${isLive ? 'is-live' : ''}" data-search="${searchData}" onclick="openSessionModal('${sess.id}')">
             <div class="card-head">
               <span class="badge-break">ORGANIZACYJNA</span>
-              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TERAZ</span>' : ''}
+              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TRWA TERAZ</span>' : ''}
               <span style="font-size:9.5px; font-weight:700; color:#64748b; margin-left:auto;">${sess.roomShort}</span>
             </div>
             <div class="card-title">${sess.title}</div>
@@ -408,11 +395,11 @@ function buildTimelineHTML(slots, onlyMyPlan) {
       } else {
         const isSelected = userCalendarPlan.includes(sess.id);
         sessionsHtml += `
-          <div class="card ${isSelected ? 'selected' : ''} ${isLive ? 'is-live' : ''}" data-search="${searchData}">
+          <div class="card ${isSelected ? 'selected' : ''} ${isLive ? 'is-live' : ''}" data-search="${searchData}" onclick="openSessionModal('${sess.id}')">
             <div class="card-head">
               <span class="badge-room">${sess.roomShort}</span>
-              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TERAZ</span>' : ''}
-              <button onclick="toggleCalendarSession('${sess.id}')" class="btn-add-plan ${isSelected ? 'in-plan' : ''}">
+              ${isLive ? '<span class="live-badge"><span class="live-dot"></span>TRWA TERAZ</span>' : ''}
+              <button onclick="event.stopPropagation(); toggleCalendarSession('${sess.id}')" class="btn-add-plan ${isSelected ? 'in-plan' : ''}">
                 ${isSelected ? '✓ W TWOIM PLANIE' : '+ Dodaj do planu'}
               </button>
             </div>
@@ -439,7 +426,73 @@ function buildTimelineHTML(slots, onlyMyPlan) {
   return output;
 }
 
-// ================= 5. OBSŁUGA QUIZU & PIN =================
+// ================= 5. MODAL SZCZEGÓŁÓW SESJI =================
+function findSessionById(sessionId) {
+  for (const dayKey in CALENDAR_SLOTS) {
+    for (const slot of CALENDAR_SLOTS[dayKey]) {
+      const found = slot.sessions.find(s => s.id === sessionId);
+      if (found) {
+        return {
+          session: found,
+          timeSlot: slot.timeSlot,
+          dayLabel: DAY_NAMES[dayKey] || dayKey
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function openSessionModal(sessionId) {
+  const data = findSessionById(sessionId);
+  if (!data) return;
+
+  const { session, timeSlot, dayLabel } = data;
+  const isSelected = userCalendarPlan.includes(session.id);
+  const modal = document.getElementById('session-modal');
+  const modalBody = document.getElementById('modal-body');
+  if (!modal || !modalBody) return;
+
+  const descriptionHtml = session.description 
+    ? `<div class="modal-desc">${session.description}</div>`
+    : `<div class="modal-desc" style="color:#94a3b8; font-style:italic;">Brak dodatkowego opisu sesji.</div>`;
+
+  modalBody.innerHTML = `
+    <div class="modal-meta-row">
+      <span class="modal-badge">📅 ${dayLabel}</span>
+      <span class="modal-badge">🕒 ${timeSlot}</span>
+      <span class="modal-badge">📍 ${session.roomShort || 'Główna'}</span>
+    </div>
+    <div class="modal-title">${session.title}</div>
+    <div class="modal-speaker-box">
+      <div>
+        <div style="font-size:11px; color:#64748b; font-weight:600;">PRELEGENT / PROWADZĄCY</div>
+        <div class="modal-speaker-name">${session.speaker || 'Komitet Organizacyjny'}</div>
+      </div>
+    </div>
+    ${descriptionHtml}
+    ${!session.isBreak ? `
+      <button onclick="toggleCalendarSession('${session.id}'); openSessionModal('${session.id}');" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px;">
+        ${isSelected ? '✓ USUŃ Z MOJEGO PLANU' : '+ DODAJ DO MOJEGO PLANU'}
+      </button>
+    ` : ''}
+  `;
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSessionModal() {
+  const modal = document.getElementById('session-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSessionModal();
+});
+
+// ================= 6. OBSŁUGA QUIZU & PIN =================
 function loadQuestionFromWelcome() {
   const pin = document.getElementById('main-pin-input').value.trim();
   processPin(pin);
@@ -532,7 +585,7 @@ function castVote(selectedKey, optionsData) {
   });
 }
 
-// ================= 6. Q&A Z FILTREM =================
+// ================= 7. Q&A Z FILTREM =================
 function openQuestionForm() {
   document.getElementById('qa-form-closed').classList.add('hidden');
   document.getElementById('qa-form-opened').classList.remove('hidden');
@@ -604,7 +657,7 @@ function submitDedicatedQuestion() {
   showToast('✓ Wysłano Twoje pytanie do prelegenta');
 }
 
-// ================= 7. ZAKŁADKI =================
+// ================= 8. ZAKŁADKI =================
 function switchTab(tabId) {
   currentActiveTab = tabId;
 
@@ -649,7 +702,7 @@ function showToast(text) {
   setTimeout(() => { toast.classList.add('hidden'); }, 1800);
 }
 
-// ================= 8. OBSŁUGA PWA I SERVICE WORKERA =================
+// ================= 9. OBSŁUGA PWA I SERVICE WORKERA =================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch((err) => {
