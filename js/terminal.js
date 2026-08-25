@@ -181,12 +181,12 @@ async function findAndLoadAttendee(query) {
   try {
     let cleanQuery = String(query).trim();
 
-    // 1. Normalizacja pauz i myślników typograficznych do standardowego ASCII '-'
+    // 1. Normalizacja pauz i myślników
     cleanQuery = cleanQuery.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-').trim();
 
     let isQrToken = false;
 
-    // 2. Wyciągnięcie tokena jeśli zeskanowano pełny adres URL
+    // 2. Wyciągnięcie tokena z linku
     if (cleanQuery.includes('token=')) {
       try {
         const parsedUrl = new URL(cleanQuery, window.location.origin);
@@ -208,25 +208,22 @@ async function findAndLoadAttendee(query) {
     const cleanQ = encodeURIComponent(cleanQuery);
     let filterQuery = '';
 
-    // 3. Zaawansowane dopasowywanie zapytania
+    // 3. Rozpoznanie typu zapytania
     if (isQrToken || cleanQuery.toUpperCase().startsWith('MED') || (cleanQuery.includes('-') && !cleanQuery.includes(' '))) {
-      // Bezpośredni token QR
       filterQuery = `filter[qr_token][_eq]=${cleanQ}`;
     } else if (/^\d{5,8}$/.test(cleanQuery)) {
-      // Numer PWZ lub token numeryczny
       filterQuery = `filter[_or][0][pwz][_eq]=${cleanQ}&filter[_or][1][qr_token][_eq]=${cleanQ}`;
     } else if (cleanQuery.includes(' ')) {
-      // Wpisano dwa słowa (np. "Jan Kowalski" lub "Kowalski Jan")
       const parts = cleanQuery.split(/\s+/).filter(Boolean);
       const p1 = encodeURIComponent(parts[0]);
       const p2 = encodeURIComponent(parts.slice(1).join(' '));
       filterQuery = `filter[_or][0][_and][0][first_name][_icontains]=${p1}&filter[_or][0][_and][1][last_name][_icontains]=${p2}&filter[_or][1][_and][0][first_name][_icontains]=${p2}&filter[_or][1][_and][1][last_name][_icontains]=${p1}`;
     } else {
-      // Pojedyncze słowo: Nazwisko, Imię, E-mail lub fragment tokena
       filterQuery = `filter[_or][0][last_name][_icontains]=${cleanQ}&filter[_or][1][first_name][_icontains]=${cleanQ}&filter[_or][2][email][_icontains]=${cleanQ}&filter[_or][3][qr_token][_icontains]=${cleanQ}`;
     }
 
-    const url = `${CONFIG.API_URL}/items/attendees?${filterQuery}&limit=1`;
+    // Pobieramy do 15 pasujących rekordów
+    const url = `${CONFIG.API_URL}/items/attendees?${filterQuery}&limit=15`;
     const res = await fetch(url);
     const data = await res.json();
 
@@ -243,27 +240,105 @@ async function findAndLoadAttendee(query) {
       return;
     }
 
-    currentAttendee = data.data[0];
-
-    if (currentAttendee.attended) {
-      const time = currentAttendee.attended_at ? new Date(currentAttendee.attended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-      const by = currentAttendee.checked_in_by ? ` przez: ${currentAttendee.checked_in_by}` : '';
-      const confirmOpen = await showConfirm(
-        `Uczestnik ${currentAttendee.first_name} ${currentAttendee.last_name} został już odprawiony o ${time}${by}. Czy chcesz otworzyć kartę ponownie?`,
-        'Uczestnik już odprawiony'
-      );
-      if (!confirmOpen) {
-        resetToCheckinView();
-        return;
-      }
+    if (data.data.length === 1) {
+      await handleSelectedAttendee(data.data[0]);
+    } else {
+      showAttendeePicker(data.data, cleanQuery);
     }
-
-    renderAttendeeCard(currentAttendee);
   } catch (err) {
     console.error('Błąd findAndLoadAttendee:', err);
     showAlert('Błąd połączenia z bazą: ' + err.message, 'Błąd sieci');
     startScanner();
   }
+}
+
+async function handleSelectedAttendee(att) {
+  currentAttendee = att;
+
+  if (currentAttendee.attended) {
+    const time = currentAttendee.attended_at ? new Date(currentAttendee.attended_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    const by = currentAttendee.checked_in_by ? ` przez: ${currentAttendee.checked_in_by}` : '';
+    const confirmOpen = await showConfirm(
+      `Uczestnik ${currentAttendee.first_name} ${currentAttendee.last_name} został już odprawiony o ${time}${by}. Czy chcesz otworzyć kartę ponownie?`,
+      'Uczestnik już odprawiony'
+    );
+    if (!confirmOpen) {
+      resetToCheckinView();
+      return;
+    }
+  }
+
+  renderAttendeeCard(currentAttendee);
+}
+
+function showAttendeePicker(attendees, query) {
+  let modal = document.getElementById('attendee-picker-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'attendee-picker-modal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4 backdrop-blur-sm';
+    document.body.appendChild(modal);
+  }
+
+  const listHtml = attendees.map((att, idx) => {
+    const fullName = `${att.academic_title ? att.academic_title + ' ' : ''}${att.first_name} ${att.last_name}`;
+    const pwzInfo = att.pwz ? `PWZ: ${att.pwz}` : 'Uczestnik (Brak PWZ)';
+    const attendedBadge = att.attended
+      ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">✓ Odprawiony</span>`
+      : `<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">● Do odprawy</span>`;
+    const emailInfo = att.email ? `<span class="text-xs text-slate-400 block truncate">${att.email}</span>` : '';
+
+    return `
+      <button type="button" data-idx="${idx}" class="picker-item w-full text-left p-3.5 rounded-xl border border-slate-200 hover:border-sky-500 hover:bg-sky-50/50 bg-white transition-all shadow-sm flex flex-col gap-1 active:scale-[0.99]">
+        <div class="flex items-center justify-between gap-2">
+          <span class="font-bold text-slate-900 text-base leading-tight">${fullName}</span>
+          ${attendedBadge}
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+          <span>${pwzInfo}</span>
+          <span>•</span>
+          <span class="font-mono text-slate-400">${att.qr_token || `ID-${att.id}`}</span>
+        </div>
+        ${emailInfo}
+      </button>
+    `;
+  }).join('');
+
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="text-lg font-extrabold text-slate-900">Wyniki wyszukiwania</h3>
+          <p class="text-xs text-slate-500">Znaleziono <span class="font-bold text-sky-600">${attendees.length}</span> uczestników dla: <span class="font-semibold text-slate-800">"${query}"</span></p>
+        </div>
+        <button id="btn-close-picker" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-lg">&times;</button>
+      </div>
+      <div class="overflow-y-auto flex flex-col gap-2.5 py-4 flex-1">
+        ${listHtml}
+      </div>
+      <button id="btn-cancel-picker" class="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors">
+        Anuluj
+      </button>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+
+  const closePicker = () => {
+    modal.classList.add('hidden');
+    startScanner();
+  };
+
+  document.getElementById('btn-close-picker').onclick = closePicker;
+  document.getElementById('btn-cancel-picker').onclick = closePicker;
+
+  modal.querySelectorAll('.picker-item').forEach(btn => {
+    btn.onclick = async () => {
+      const selected = attendees[parseInt(btn.dataset.idx, 10)];
+      modal.classList.add('hidden');
+      await handleSelectedAttendee(selected);
+    };
+  });
 }
 
 function renderAttendeeCard(att) {
