@@ -159,7 +159,7 @@ async function startScanner() {
     if (placeholder) {
       placeholder.innerHTML = `
         <span class="text-rose-500 font-bold">Brak dostępu do kamery.</span>
-        <span class="text-[10px] text-slate-400">Wpisz token lub nazwisko poniżej.</span>
+        <span class="text-[10px] text-slate-400">Wpisz token, nazwisko lub e-mail poniżej.</span>
       `;
     }
   }
@@ -181,28 +181,61 @@ async function findAndLoadAttendee(query) {
   try {
     let cleanQuery = String(query).trim();
 
-    // Normalizacja typograficznych myślników (en-dash, em-dash, minus) do standardowego ASCII '-'
+    // 1. Normalizacja pauz i myślników typograficznych do standardowego ASCII '-'
     cleanQuery = cleanQuery.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-').trim();
 
-    // Jeśli zeskanowano URL, wyciągamy parametr ?token=
+    let isQrToken = false;
+
+    // 2. Wyciągnięcie tokena jeśli zeskanowano pełny adres URL
     if (cleanQuery.includes('token=')) {
       try {
         const parsedUrl = new URL(cleanQuery, window.location.origin);
-        const extractedToken = parsedUrl.searchParams.get('token');
-        if (extractedToken) cleanQuery = extractedToken;
+        const extracted = parsedUrl.searchParams.get('token');
+        if (extracted) {
+          cleanQuery = extracted;
+          isQrToken = true;
+        }
       } catch {
         const match = cleanQuery.match(/token=([^&]+)/);
-        if (match) cleanQuery = decodeURIComponent(match[1]);
+        if (match) {
+          cleanQuery = decodeURIComponent(match[1]);
+          isQrToken = true;
+        }
       }
       cleanQuery = cleanQuery.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-').trim();
     }
 
     const cleanQ = encodeURIComponent(cleanQuery);
-    // Używamy _ieq dla ignorowania wielkości liter (np. med26-001 vs MED26-001)
-    const url = `${CONFIG.API_URL}/items/attendees?filter[_or][0][qr_token][_ieq]=${cleanQ}&filter[_or][1][pwz][_ieq]=${cleanQ}&filter[_or][2][last_name][_icontains]=${cleanQ}&limit=1`;
+    let filterQuery = '';
 
+    // 3. Zaawansowane dopasowywanie zapytania
+    if (isQrToken || cleanQuery.toUpperCase().startsWith('MED') || (cleanQuery.includes('-') && !cleanQuery.includes(' '))) {
+      // Bezpośredni token QR
+      filterQuery = `filter[qr_token][_eq]=${cleanQ}`;
+    } else if (/^\d{5,8}$/.test(cleanQuery)) {
+      // Numer PWZ lub token numeryczny
+      filterQuery = `filter[_or][0][pwz][_eq]=${cleanQ}&filter[_or][1][qr_token][_eq]=${cleanQ}`;
+    } else if (cleanQuery.includes(' ')) {
+      // Wpisano dwa słowa (np. "Jan Kowalski" lub "Kowalski Jan")
+      const parts = cleanQuery.split(/\s+/).filter(Boolean);
+      const p1 = encodeURIComponent(parts[0]);
+      const p2 = encodeURIComponent(parts.slice(1).join(' '));
+      filterQuery = `filter[_or][0][_and][0][first_name][_icontains]=${p1}&filter[_or][0][_and][1][last_name][_icontains]=${p2}&filter[_or][1][_and][0][first_name][_icontains]=${p2}&filter[_or][1][_and][1][last_name][_icontains]=${p1}`;
+    } else {
+      // Pojedyncze słowo: Nazwisko, Imię, E-mail lub fragment tokena
+      filterQuery = `filter[_or][0][last_name][_icontains]=${cleanQ}&filter[_or][1][first_name][_icontains]=${cleanQ}&filter[_or][2][email][_icontains]=${cleanQ}&filter[_or][3][qr_token][_icontains]=${cleanQ}`;
+    }
+
+    const url = `${CONFIG.API_URL}/items/attendees?${filterQuery}&limit=1`;
     const res = await fetch(url);
     const data = await res.json();
+
+    if (data.errors && data.errors.length > 0) {
+      console.error('Błąd Directus API:', data.errors);
+      showAlert(`Błąd API bazy danych: ${data.errors[0].message}`, 'Błąd Directus');
+      startScanner();
+      return;
+    }
 
     if (!data.data || data.data.length === 0) {
       showAlert(`Nie znaleziono uczestnika dla: "${cleanQuery}"`, 'Brak wyników');
@@ -227,6 +260,7 @@ async function findAndLoadAttendee(query) {
 
     renderAttendeeCard(currentAttendee);
   } catch (err) {
+    console.error('Błąd findAndLoadAttendee:', err);
     showAlert('Błąd połączenia z bazą: ' + err.message, 'Błąd sieci');
     startScanner();
   }
@@ -237,7 +271,7 @@ function renderAttendeeCard(att) {
   document.getElementById('attendee-card-section').classList.remove('hidden');
 
   document.getElementById('card-attendee-name').textContent = `${att.academic_title ? att.academic_title + ' ' : ''}${att.first_name} ${att.last_name}`;
-  document.getElementById('card-attendee-pwz').textContent = att.pwz ? `PWZ: ${att.pwz}` : 'Brak PWZ';
+  document.getElementById('card-attendee-pwz').textContent = att.pwz ? `PWZ: ${att.pwz}` : 'Uczestnik (Brak PWZ)';
   document.getElementById('card-attendee-token').textContent = att.qr_token || `ID-${att.id}`;
 
   renderPaymentBadge(att.payment_status || 'unpaid');
