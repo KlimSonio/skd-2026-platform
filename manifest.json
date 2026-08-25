@@ -1,0 +1,20 @@
+{
+  "id": "/app.html",
+  "name": "SKD 2026 - Hub Uczestnika",
+  "short_name": "SKD 2026",
+  "description": "Oficjalna aplikacja konferencyjna SKD 2026",
+  "start_url": "/app.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

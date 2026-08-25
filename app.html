@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Konferencja SKD 2026 - Hub Uczestnika</title>
+  
+  <!-- PWA & Mobile -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SKD 2026">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/splash.css">
+</head>
+<body>
+  <!-- SPLASH SCREEN -->
+  <div id="app-splash-screen">
+    <div class="splash-content">
+      <img src="assets/Images/logo_konferencja_skd_2026_250x146_01.png" alt="SKD 2026" class="splash-logo" onerror="this.src='/logo.png';" />
+      
+      <div class="infinity-spinner">
+        <svg class="heart-spinner left-heart" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+        <svg class="heart-spinner right-heart" viewBox="0 0 24 24">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        </svg>
+      </div>
+      
+      <div class="splash-progress-track">
+        <div class="splash-progress-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-frame">
+
+    <!-- 1. GÓRNY PASEK Z PROFILEM UCZESTNIKA -->
+    <header class="top-fixed-bar" style="padding-top: 10px;">
+      
+      <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 8px;">
+        <img 
+          src="assets/Images/logo_konferencja_skd_2026_250x146_01.png" 
+          alt="SKD 2026" 
+          onerror="this.src='/logo.png';"
+          style="height: 48px; width: auto; max-width: 190px; object-fit: contain; display: block;" 
+        />
+      </div>
+
+      <!-- PROFIL UCZESTNIKA (DYNAMICZNY) -->
+      <div class="header-user" style="margin-top: 0; padding-top: 4px; border-top: 1px solid #f1f5f9;">
+        <div>
+          <div id="user-display-name" class="user-name">Gość Konferencji</div>
+          <div id="user-display-pwz" class="user-pwz">Tryb otwarty</div>
+        </div>
+        <div>
+          <span id="user-display-badge" class="badge-present" style="background:#f1f5f9; border-color:#e2e8f0; color:#64748b;">
+            <span id="user-badge-dot" class="dot-green" style="background-color:#94a3b8;"></span>
+            <span id="user-badge-text">GOŚĆ</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- SELEKTOR DNI -->
+      <div id="calendar-days-bar" class="days-picker">
+        <button id="btn-day-1" class="day-btn active">Pt (24.04)</button>
+        <button id="btn-day-2" class="day-btn">Sob (25.04)</button>
+        <button id="btn-day-3" class="day-btn">Nd (26.04)</button>
+      </div>
+
+      <!-- WYSZUKIWARKA -->
+      <div id="search-container" class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="global-search-input" placeholder="Szukaj wykładu, prelegenta, sali..." class="search-input" />
+        <button id="search-clear-btn" class="search-clear-btn hidden">✕</button>
+      </div>
+    </header>
+
+    <!-- 2. SCROLLOWALNE CIAŁO STRONY -->
+    <main class="main-scroll-body">
+
+      <!-- BANER DLA GOŚCIA -->
+      <div id="guest-token-banner" class="hidden" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#1e3a8a; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <strong>Posiadasz identyfikator?</strong><br>
+          <span style="font-size:10px; color:#3b82f6;">Zeskanuj aparat telefonu kod QR z identyfikatora, aby aktywować certyfikat OIL.</span>
+        </div>
+      </div>
+
+      <!-- BANER INSTALACJI PWA -->
+      <div id="pwa-install-card" class="pwa-install-banner hidden">
+        <div class="pwa-install-text">
+          <strong>📱 Zainstaluj aplikację</strong><br>
+          <span style="font-size:10px; color:#cbd5e1;">Dodaj SKD 2026 do ekranu głównego</span>
+        </div>
+        <button id="pwa-install-action" class="pwa-install-btn">Zainstaluj</button>
+      </div>
+
+      <!-- TAB 1: PROGRAM -->
+      <section id="tab-program">
+        <div id="program-timeline"></div>
+      </section>
+
+      <!-- TAB 2: MÓJ PLAN -->
+      <section id="tab-myplan" class="hidden">
+        <div id="myplan-timeline"></div>
+      </section>
+
+      <!-- TAB 3: GŁOSOWANIE PIN & Q&A -->
+      <section id="tab-vote" class="hidden">
+        <div id="vote-pin-welcome" class="pin-box">
+          <div style="width:36px; height:36px; border-radius:50%; background:#eff6ff; color:#1e3a8a; border:1px solid #bfdbfe; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; margin:0 auto 8px;">PIN</div>
+          <div style="font-size:13px; font-weight:700; margin-bottom:2px;">Dołącz do aktywnego quizu</div>
+          <div style="font-size:11px; color:#64748b; margin-bottom:12px;">Wpisz 4-cyfrowy kod PIN ze slajdu prelegenta:</div>
+          
+          <div style="display:flex; justify-content:center; gap:8px; margin-bottom:6px;">
+            <input type="tel" id="main-pin-input" maxlength="4" placeholder="••••" class="pin-input" />
+            <button id="btn-join-pin" class="btn-primary">DOŁĄCZ</button>
+          </div>
+          <div id="main-pin-error" class="hidden" style="font-size:11px; font-weight:700; color:#e11d48; margin-bottom:8px;">Nieprawidłowy kod PIN. Sprawdź ekran telebimu.</div>
+
+          <div style="border-top:1px solid #e2e8f0; padding-top:8px; margin-top:8px;">
+            <div style="font-size:10px; color:#94a3b8; margin-bottom:4px;">Kody testowe sal:</div>
+            <div style="display:flex; justify-content:center; gap:4px;">
+              <button class="btn-quick-pin" data-pin="1040" style="font-size:10px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:5px; background:#fff; font-weight:600;">1040 (Sala A)</button>
+              <button class="btn-quick-pin" data-pin="2080" style="font-size:10px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:5px; background:#fff; font-weight:600;">2080 (Sala B)</button>
+              <button class="btn-quick-pin" data-pin="3010" style="font-size:10px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:5px; background:#fff; font-weight:600;">3010 (Warsztat)</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="vote-active-view" class="hidden" style="margin-top: 10px;">
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:6px 10px; border-radius:8px; font-size:11px; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-weight:700; color:#1e3a8a;">Aktywny quiz: <strong id="active-pin-badge" style="font-family:monospace;">1040</strong></span>
+            <button id="btn-reset-pin" style="border:none; background:none; text-decoration:underline; font-size:10px; cursor:pointer; color:#475569;">Zmień kod PIN</button>
+          </div>
+
+          <div class="card" style="margin-bottom:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <span id="vote-session-name" style="font-size:10px; font-weight:700; color:#1e3a8a; text-transform:uppercase;">Sesja</span>
+              <span id="vote-room-tag" class="badge-room">SALA</span>
+            </div>
+            <div style="border-bottom:1px solid #f1f5f9; padding-bottom:4px; margin-bottom:4px;">
+              <div id="vote-speaker-name" style="font-size:11px; font-weight:700; color:#0f172a;">Prelegent</div>
+              <div id="vote-topic-title" style="font-size:10px; color:#64748b;">Temat</div>
+            </div>
+            <div id="vote-question-text" style="font-size:12px; font-weight:700; color:#0f172a; line-height:1.3;">Pytanie</div>
+            <div id="vote-question-sub" style="font-size:11px; font-weight:700; color:#1e3a8a; margin-top:2px;">Podtytuł</div>
+          </div>
+
+          <div id="vote-options" style="margin-bottom:8px;"></div>
+          <div id="vote-alert" class="hidden" style="background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; font-size:11px; font-weight:700; padding:8px; border-radius:8px; text-align:center; margin-bottom:8px;">
+            ✓ Twój głos został zarejestrowany na żywo.
+          </div>
+
+          <div class="qa-box">
+            <div class="qa-header">
+              <div>
+                <div class="qa-title">Pytania z sali do prelegenta</div>
+                <div style="font-size:10px; color:#64748b;">Głosuj na najważniejsze lub zadaj własne:</div>
+              </div>
+              <span id="qa-speaker-badge" class="qa-speaker-tag">Prelegent</span>
+            </div>
+
+            <div id="qa-form-closed" style="margin-bottom:8px;">
+              <button id="btn-open-qa-form" style="width:100%; padding:8px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; font-size:11px; font-weight:700; color:#334155; cursor:pointer;">
+                + Zadaj anonimowe pytanie prelegentowi
+              </button>
+            </div>
+
+            <div id="qa-form-opened" class="hidden" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:8px; margin-bottom:8px;">
+              <div style="font-size:10px; color:#64748b; margin-bottom:4px; display:flex; justify-content:space-between;">
+                <span>Treść pytania merytorycznego:</span>
+                <strong style="color:#059669;">Anonimowo</strong>
+              </div>
+              <textarea id="dedicated-qa-input" rows="2" placeholder="Wpisz merytoryczne pytanie do prelegenta..." style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:6px; font-size:11px; outline:none; resize:none; background:#fff; font-family:inherit;"></textarea>
+              <div id="qa-validation-error" class="hidden" style="font-size:10.5px; font-weight:700; color:#e11d48; margin-top:4px;"></div>
+              <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                <button id="btn-cancel-qa" style="padding:4px 8px; border:none; background:none; font-size:11px; color:#64748b; cursor:pointer;">Anuluj</button>
+                <button id="btn-submit-qa" class="btn-primary" style="padding:4px 10px; font-size:11px;">Wyślij pytanie</button>
+              </div>
+            </div>
+
+            <div id="dedicated-qa-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: PUNKTY OIL (DYNAMICZNE) -->
+      <section id="tab-oil" class="hidden">
+        <div class="card" style="text-align:center; padding:18px; margin-top: 10px;">
+          <div id="oil-icon" style="width:42px; height:42px; border-radius:50%; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; margin:0 auto 10px;">✓</div>
+          <div class="text-sm font-extrabold text-slate-900">Status Certyfikatu OIL</div>
+          <div class="text-xs text-slate-500 mt-0.5">Okręgowa Izba Lekarska</div>
+          
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; margin:14px 0; text-align:left; font-size:11px; line-height:1.7;">
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Uczestnik:</span> <strong id="oil-attendee-name">Gość Konferencji</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Numer PWZ:</span> <strong id="oil-attendee-pwz" style="font-family:monospace;">—</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Punkty edukacyjne:</span> <strong style="color:#047857;">14.0 pkt OIL</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Weryfikacja obecności:</span> <strong id="oil-attendance-status" style="color:#059669;">Potwierdzona</strong></div>
+          </div>
+
+          <button id="btn-download-certificate" class="btn-primary" style="width:100%; padding:10px;">POBIERZ CERTYFIKAT (PDF)</button>
+        </div>
+      </section>
+
+      <div id="app-toast" class="toast hidden">Komunikat</div>
+
+    </main>
+
+    <!-- 3. DOLNY PASEK ZE SPONSORAMI -->
+    <footer class="footer-fixed-bar">
+      <div class="sponsors-box">
+        <div class="marquee-track">
+          <img src="assets/Images/Medtronic.webp" alt="Medtronic" />
+          <img src="assets/Images/Phillips.webp" alt="Philips" />
+          <img src="assets/Images/BostonScientific.webp" alt="Boston" />
+          <img src="assets/Images/Abbott.webp" alt="Abbott" />
+          <img src="assets/Images/Symico.webp" alt="Symico" />
+          <img src="assets/Images/ai_body.png" alt="AI Body" />
+        </div>
+      </div>
+
+      <nav class="nav-grid">
+        <button id="nav-program" class="nav-item active">Program</button>
+        <button id="nav-myplan" class="nav-item">Mój Plan (<span id="nav-my-count">0</span>)</button>
+        <button id="nav-vote" class="nav-item">Głosowanie</button>
+        <button id="nav-oil" class="nav-item">Punkty OIL</button>
+      </nav>
+    </footer>
+
+  </div>
+
+  <!-- Modal szczegółów panelu -->
+  <div id="session-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-backdrop" id="modal-backdrop-close"></div>
+    <div class="modal-dialog">
+      <button class="modal-close-btn" id="btn-close-session-modal" aria-label="Zamknij">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="data/schedule.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SKD 2026 - Telebim Sali Wykładowej</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    }
+
+    body {
+      background: #090d16;
+      color: #f8fafc;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* GÓRNY PASEK */
+    .screen-header {
+      height: 70px;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      z-index: 10;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .brand-logo-img {
+      height: 44px;
+      width: auto;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+    }
+
+    .session-meta-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: #94a3b8;
+      border-left: 2px solid #334155;
+      padding-left: 14px;
+    }
+    .session-meta-tag strong {
+      color: #38bdf8;
+    }
+
+    .mode-switch-group {
+      display: flex;
+      gap: 8px;
+      background: #1e293b;
+      padding: 4px;
+      border-radius: 8px;
+    }
+
+    .btn-mode {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-mode.active {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+    }
+
+    /* GŁÓWNY UKŁAD 16:9 */
+    .screen-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 32px;
+      padding: 24px 32px;
+      min-height: 0;
+    }
+
+    /* LEWY PANEL (PIN + QR) */
+    .join-sidebar {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 10px 30px -5px rgba(0,0,0,0.5);
+    }
+
+    .join-instruction-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .join-instruction-sub {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 18px;
+    }
+
+    .qr-container {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .pin-display-box {
+      width: 100%;
+      background: #1e293b;
+      border: 1.5px dashed #38bdf8;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .pin-label {
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 1px;
+    }
+
+    .pin-value {
+      font-size: 44px;
+      font-weight: 900;
+      color: #38bdf8;
+      font-family: monospace !important;
+      letter-spacing: 6px;
+      line-height: 1.1;
+      margin-top: 2px;
+    }
+
+    /* PRAWY OBSZAR PREZENTACYJNY */
+    .display-canvas {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 28px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+
+    /* QUIZ */
+    .quiz-topic {
+      font-size: 14px;
+      font-weight: 800;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .quiz-question-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .quiz-question-sub {
+      font-size: 16px;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+
+    .quiz-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .quiz-bar-card {
+      position: relative;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px 20px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .quiz-bar-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, rgba(37, 99, 235, 0.4), rgba(56, 189, 248, 0.5));
+      border-right: 3px solid #38bdf8;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1;
+    }
+
+    .quiz-bar-text {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+      max-width: 80%;
+    }
+
+    .quiz-letter-badge {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #38bdf8;
+      font-size: 15px;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .quiz-bar-percentage {
+      position: relative;
+      z-index: 2;
+      font-size: 24px;
+      font-weight: 900;
+      color: #38bdf8;
+      font-family: monospace !important;
+    }
+
+    /* Q&A GŁÓWNY */
+    .qa-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .qa-headline {
+      font-size: 24px;
+      font-weight: 900;
+      color: #ffffff;
+    }
+    .qa-live-badge {
+      background: #064e3b;
+      border: 1px solid #059669;
+      color: #34d399;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .qa-live-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #10b981;
+      border-radius: 50%;
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+
+    .qa-cards-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .qa-screen-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .qa-screen-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f8fafc;
+      line-height: 1.4;
+    }
+
+    .qa-screen-votes {
+      background: #0f172a;
+      border: 1px solid #475569;
+      color: #38bdf8;
+      font-size: 16px;
+      font-weight: 900;
+      padding: 8px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* FOOTER SPONSORZY */
+    .screen-footer {
+      height: 54px;
+      background: #0a0f1d;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      padding: 0 20px;
+    }
+    .sponsors-track {
+      display: flex;
+      align-items: center;
+      gap: 50px;
+      animation: marqueeScreen 30s linear infinite;
+      white-space: nowrap;
+    }
+    @keyframes marqueeScreen {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .sponsor-item img {
+      max-height: 26px;
+      width: auto;
+      object-fit: contain;
+      filter: brightness(0) invert(1);
+      opacity: 0.75;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- 1. GÓRNY PASEK -->
+  <header class="screen-header">
+    <div class="brand-group">
+      <img src="assets/Images/logo_konferencja_skd_2026_250x146_01.png" alt="SKD 2026" class="brand-logo-img">
+      <div class="session-meta-tag">
+        SALA: <strong id="header-room-name">SALA A</strong> &nbsp;|&nbsp; 
+        SESJA: <strong id="header-session-name">Ostre zespoły wieńcowe u chorych z cukrzycą</strong>
+      </div>
+    </div>
+
+    <!-- PRZEŁĄCZNIK WIDOKÓW -->
+    <div class="mode-switch-group">
+      <button id="btn-show-vote" class="btn-mode active" onclick="setScreenMode('vote')">📊 Głosowanie</button>
+      <button id="btn-show-qa" class="btn-mode" onclick="setScreenMode('qa')">💬 Pytania z Sali (Q&A)</button>
+    </div>
+  </header>
+
+  <!-- 2. GŁÓWNA PRZESTRZEŃ TELEBIMU -->
+  <main class="screen-body">
+    <!-- LEWY PANEL: QR & PIN -->
+    <aside class="join-sidebar">
+      <div class="join-instruction-title">Dołącz do dyskusji</div>
+      <div class="join-instruction-sub">Zeskanuj aparat telefonu lub wpisz kod PIN</div>
+      
+      <div id="qrcode" class="qr-container"></div>
+
+      <div class="pin-display-box">
+        <div class="pin-label">KOD PIN SESJI</div>
+        <div id="screen-pin-val" class="pin-value">1040</div>
+      </div>
+    </aside>
+
+    <!-- PRAWY PANEL -->
+    <section class="display-canvas">
+      
+      <!-- WIDOK: GŁOSOWANIE -->
+      <div id="view-vote-container">
+        <div id="screen-topic" class="quiz-topic">Kardiologia Kliniczna • Przypadek 1</div>
+        <div id="screen-question" class="quiz-question-title">58-letni pacjent z NSTEMI i cukrzycą typu 2.</div>
+        <div id="screen-sub" class="quiz-question-sub">Jaki schemat farmakoterapii wdrożysz w pierwszej dobie?</div>
+
+        <div id="screen-options-list" class="quiz-options-list"></div>
+      </div>
+
+      <!-- WIDOK: PYTANIA Z SALI (Q&A) -->
+      <div id="view-qa-container" class="hidden">
+        <div class="qa-header-row">
+          <div class="qa-headline">Pytania zadane przez audytorium</div>
+          <div class="qa-live-badge">Moderacja na żywo</div>
+        </div>
+
+        <div id="screen-qa-list" class="qa-cards-grid"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- 3. DOLNA KARUZELA SPONSORÓW -->
+  <footer class="screen-footer">
+    <div class="sponsors-track">
+      <div class="sponsor-item"><img src="assets/Images/Abbott.webp" alt="Abbott"></div>
+      <div class="sponsor-item"><img src="assets/Images/ai_body.png" alt="AI Body"></div>
+      <div class="sponsor-item"><img src="assets/Images/BostonScientific.webp" alt="Boston Scientific"></div>
+      <div class="sponsor-item"><img src="assets/Images/GE.webp" alt="GE Healthcare"></div>
+      <div class="sponsor-item"><img src="assets/Images/hammermed-logo.webp" alt="Hammermed"></div>
+      <div class="sponsor-item"><img src="assets/Images/Medtronic.webp" alt="Medtronic"></div>
+      <div class="sponsor-item"><img src="assets/Images/Phillips.webp" alt="Philips"></div>
+      <div class="sponsor-item"><img src="assets/Images/Samsung_Orig_Lettermark_BLUE_RGB.webp" alt="Samsung"></div>
+      <div class="sponsor-item"><img src="assets/Images/Symico.webp" alt="Symico"></div>
+      <!-- Pętla -->
+      <div class="sponsor-item"><img src="assets/Images/Abbott.webp" alt="Abbott"></div>
+      <div class="sponsor-item"><img src="assets/Images/ai_body.png" alt="AI Body"></div>
+      <div class="sponsor-item"><img src="assets/Images/BostonScientific.webp" alt="Boston Scientific"></div>
+      <div class="sponsor-item"><img src="assets/Images/GE.webp" alt="GE Healthcare"></div>
+      <div class="sponsor-item"><img src="assets/Images/hammermed-logo.webp" alt="Hammermed"></div>
+      <div class="sponsor-item"><img src="assets/Images/Medtronic.webp" alt="Medtronic"></div>
+      <div class="sponsor-item"><img src="assets/Images/Phillips.webp" alt="Philips"></div>
+      <div class="sponsor-item"><img src="assets/Images/Samsung_Orig_Lettermark_BLUE_RGB.webp" alt="Samsung"></div>
+      <div class="sponsor-item"><img src="assets/Images/Symico.webp" alt="Symico"></div>
+    </div>
+  </footer>
+
+  <script>
+    const PIN_DATABASE = {
+      '1040': {
+        room: 'SALA A',
+        session: 'Ostre zespoły wieńcowe u chorych z cukrzycą',
+        topic: 'Kardiologia Kliniczna • Przypadek 1',
+        question: '58-letni pacjent z NSTEMI i cukrzycą typu 2.',
+        questionSub: 'Jaki schemat farmakoterapii wdrożysz w pierwszej dobie?',
+        options: [
+          { key: 'A', text: 'Podwójna terapia przeciwpłytkowa + heparyna niefrakcjonowana', pct: 18 },
+          { key: 'B', text: 'Monoterapia ASA + inhibitor P2Y12 nowej generacji', pct: 68 },
+          { key: 'C', text: 'Wdrożenie statyny wysokiej intensywności i odroczenie DAPT', pct: 14 }
+        ],
+        qaList: [
+          { id: 'q1', text: 'Czy u chorych z eGFR poniżej 30 modyfikujemy dawkę nasycającą leku?', votes: 14 },
+          { id: 'q2', text: 'Jakie jest zalecane okno czasowe dla PCI w tej grupie chorych?', votes: 6 },
+          { id: 'q3', text: 'Czy stosujemy osłonę inhibitorami pompy protonowej u każdego pacjenta?', votes: 3 }
+        ]
+      }
+    };
+
+    let activePin = '1040';
+    let currentMode = 'vote';
+
+    function initScreen() {
+      const data = PIN_DATABASE[activePin];
+      if (!data) return;
+
+      document.getElementById('header-room-name').innerText = data.room;
+      document.getElementById('header-session-name').innerText = data.session;
+      document.getElementById('screen-pin-val').innerText = activePin;
+      document.getElementById('screen-topic').innerText = data.topic;
+      document.getElementById('screen-question').innerText = data.question;
+      document.getElementById('screen-sub').innerText = data.questionSub;
+
+      const joinUrl = window.location.origin + '/app.html';
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: joinUrl,
+        width: 140,
+        height: 140,
+        colorDark : "#0f172a",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.M
+      });
+
+      renderOptions(data.options);
+      renderQAList(data.qaList);
+    }
+
+    function renderOptions(options) {
+      const list = document.getElementById('screen-options-list');
+      list.innerHTML = options.map(opt => `
+        <div class="quiz-bar-card">
+          <div class="quiz-bar-fill" style="width: ${opt.pct}%;"></div>
+          <div class="quiz-bar-text">
+            <span class="quiz-letter-badge">${opt.key}</span>
+            <span>${opt.text}</span>
+          </div>
+          <div class="quiz-bar-percentage">${opt.pct}%</div>
+        </div>
+      `).join('');
+    }
+
+    function renderQAList(qaList) {
+      const container = document.getElementById('screen-qa-list');
+      container.innerHTML = qaList.map(q => `
+        <div class="qa-screen-card">
+          <div class="qa-screen-text">${q.text}</div>
+          <div class="qa-screen-votes">▲ ${q.votes}</div>
+        </div>
+      `).join('');
+    }
+
+    function setScreenMode(mode) {
+      currentMode = mode;
+      const btnVote = document.getElementById('btn-show-vote');
+      const btnQa = document.getElementById('btn-show-qa');
+      const viewVote = document.getElementById('view-vote-container');
+      const viewQa = document.getElementById('view-qa-container');
+
+      if (mode === 'vote') {
+        btnVote.classList.add('active');
+        btnQa.classList.remove('active');
+        viewVote.classList.remove('hidden');
+        viewQa.classList.add('hidden');
+      } else {
+        btnQa.classList.add('active');
+        btnVote.classList.remove('active');
+        viewQa.classList.remove('hidden');
+        viewVote.classList.add('hidden');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initScreen);
+  </script>
+</body>
+</html>
