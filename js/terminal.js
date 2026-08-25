@@ -1,4 +1,3 @@
-
 import { CONFIG } from './config.js';
 
 const PIN_FLOW_TRIGGER_URL = `${CONFIG.API_URL}/flows/trigger/7f72f7ac-7e51-4528-bf0b-448f2ce9ad13`;
@@ -180,24 +179,27 @@ async function onScanSuccess(token) {
 
 async function findAndLoadAttendee(query) {
   try {
-    let cleanQuery = query.trim();
+    let cleanQuery = String(query).trim();
 
-    // Jeśli zeskanowano pełny link URL, wyciągamy z niego parametr ?token=
+    // Normalizacja typograficznych myślników (en-dash, em-dash, minus) do standardowego ASCII '-'
+    cleanQuery = cleanQuery.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-').trim();
+
+    // Jeśli zeskanowano URL, wyciągamy parametr ?token=
     if (cleanQuery.includes('token=')) {
       try {
         const parsedUrl = new URL(cleanQuery, window.location.origin);
         const extractedToken = parsedUrl.searchParams.get('token');
-        if (extractedToken) {
-          cleanQuery = extractedToken;
-        }
+        if (extractedToken) cleanQuery = extractedToken;
       } catch {
         const match = cleanQuery.match(/token=([^&]+)/);
         if (match) cleanQuery = decodeURIComponent(match[1]);
       }
+      cleanQuery = cleanQuery.replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-').trim();
     }
 
     const cleanQ = encodeURIComponent(cleanQuery);
-    const url = `${CONFIG.API_URL}/items/attendees?filter[_or][0][qr_token][_eq]=${cleanQ}&filter[_or][1][pwz][_eq]=${cleanQ}&filter[_or][2][last_name][_icontains]=${cleanQ}&limit=1`;
+    // Używamy _ieq dla ignorowania wielkości liter (np. med26-001 vs MED26-001)
+    const url = `${CONFIG.API_URL}/items/attendees?filter[_or][0][qr_token][_ieq]=${cleanQ}&filter[_or][1][pwz][_ieq]=${cleanQ}&filter[_or][2][last_name][_icontains]=${cleanQ}&limit=1`;
 
     const res = await fetch(url);
     const data = await res.json();
@@ -392,16 +394,23 @@ function setupEventListeners() {
   document.getElementById('btn-cancel-checkin').onclick = resetToCheckinView;
   document.getElementById('btn-confirm-checkin').onclick = confirmCheckin;
 
-  document.getElementById('btn-manual-search').onclick = () => {
-    const q = document.getElementById('manual-token-input').value.trim();
-    if (q) findAndLoadAttendee(q);
-  };
-
-  document.getElementById('manual-token-input').onkeydown = (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) {
-      findAndLoadAttendee(e.target.value.trim());
+  const input = document.getElementById('manual-token-input');
+  const triggerSearch = () => {
+    if (input && input.value.trim()) {
+      findAndLoadAttendee(input.value.trim());
     }
   };
+
+  document.getElementById('btn-manual-search').onclick = triggerSearch;
+
+  if (input) {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        e.preventDefault();
+        triggerSearch();
+      }
+    });
+  }
 
   document.getElementById('btn-mark-paid-now').onclick = async () => {
     if (!currentAttendee) return;
@@ -450,4 +459,3 @@ function showConfirm(msg, title = 'Wymagane potwierdzenie') {
     };
   });
 }
-EOF
