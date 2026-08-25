@@ -1,6 +1,7 @@
 import { CONFIG } from './config.js';
 
-let operatorsList = [];
+const PIN_FLOW_TRIGGER_URL = `${CONFIG.API_URL}/flows/trigger/7f72f7ac-7e51-4528-bf0b-448f2ce9ad13`;
+
 let currentOperator = null;
 let currentAttendee = null;
 let html5QrCode = null;
@@ -10,25 +11,14 @@ let sigCanvas, sigCtx;
 let isDrawing = false;
 let hasSignature = false;
 
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadOperators();
+document.addEventListener('DOMContentLoaded', () => {
   initPinPad();
   initSignaturePad();
   checkSavedSession();
   setupEventListeners();
 });
 
-async function loadOperators() {
-  try {
-    const res = await fetch(`${CONFIG.API_URL}/items/operators`);
-    const data = await res.json();
-    operatorsList = data.data || [];
-  } catch (err) {
-    console.error('Błąd pobierania operatorów:', err);
-    showAlert('Błąd połączenia z bazą stanowisk.', 'Błąd sieci');
-  }
-}
-
+// ================= 1. BEZPIECZNA WERYFIKACJA PIN =================
 function initPinPad() {
   document.querySelectorAll('.pin-key').forEach(key => {
     key.addEventListener('click', () => {
@@ -36,7 +26,7 @@ function initPinPad() {
       if (val === 'clear') currentPinInput = '';
       else if (val === 'backspace') currentPinInput = currentPinInput.slice(0, -1);
       else if (currentPinInput.length < 4) currentPinInput += val;
-      
+
       updatePinDots();
       if (currentPinInput.length === 4) verifyPin(currentPinInput);
     });
@@ -70,23 +60,41 @@ function updatePinDots() {
   }
 }
 
-function verifyPin(pin) {
-  const operator = operatorsList.find(op => String(op.pin).trim() === String(pin).trim());
+async function verifyPin(pin) {
   const errorMsg = document.getElementById('pin-error-msg');
+  const dotsContainer = document.getElementById('pin-dots-container');
 
-  if (operator) {
-    if (errorMsg) errorMsg.classList.add('hidden');
-    loginOperator(operator);
-  } else {
-    if (errorMsg) errorMsg.classList.remove('hidden');
-    const dotsContainer = document.getElementById('pin-dots-container');
-    dotsContainer.classList.add('animate-bounce');
-    setTimeout(() => {
-      dotsContainer.classList.remove('animate-bounce');
-      currentPinInput = '';
-      updatePinDots();
-    }, 500);
+  try {
+    const res = await fetch(PIN_FLOW_TRIGGER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: String(pin).trim() })
+    });
+
+    const result = await res.json();
+    const matched = result.find_operator || result.data || result;
+    const operator = Array.isArray(matched) ? matched[0] : (matched && matched.id ? matched : null);
+
+    if (operator && operator.id) {
+      if (errorMsg) errorMsg.classList.add('hidden');
+      loginOperator(operator);
+    } else {
+      triggerPinError(errorMsg, dotsContainer);
+    }
+  } catch (err) {
+    console.error('Błąd weryfikacji PIN:', err);
+    triggerPinError(errorMsg, dotsContainer);
   }
+}
+
+function triggerPinError(errorMsg, dotsContainer) {
+  if (errorMsg) errorMsg.classList.remove('hidden');
+  if (dotsContainer) dotsContainer.classList.add('animate-bounce');
+  setTimeout(() => {
+    if (dotsContainer) dotsContainer.classList.remove('animate-bounce');
+    currentPinInput = '';
+    updatePinDots();
+  }, 500);
 }
 
 function loginOperator(operator) {
@@ -95,7 +103,7 @@ function loginOperator(operator) {
 
   const nameEl = document.getElementById('operator-display-name');
   const initEl = document.getElementById('operator-avatar-initials');
-  
+
   const displayName = operator.name || `Stanowisko #${operator.id}`;
   const initials = operator.initials || displayName.slice(0, 2).toUpperCase();
 
@@ -131,6 +139,7 @@ function checkSavedSession() {
   }
 }
 
+// ================= 2. SKANER QR & WYSZUKIWANIE =================
 async function startScanner() {
   const placeholder = document.getElementById('scanner-loading-placeholder');
   if (typeof Html5Qrcode === 'undefined') {
@@ -146,7 +155,7 @@ async function startScanner() {
       () => {}
     );
     if (placeholder) placeholder.classList.add('hidden');
-  } catch (err) {
+  } catch {
     if (placeholder) {
       placeholder.innerHTML = `
         <span class="text-rose-500 font-bold">Brak dostępu do kamery.</span>
@@ -172,7 +181,7 @@ async function findAndLoadAttendee(query) {
   try {
     const cleanQ = encodeURIComponent(query);
     const url = `${CONFIG.API_URL}/items/attendees?filter[_or][0][qr_token][_eq]=${cleanQ}&filter[_or][1][pwz][_eq]=${cleanQ}&filter[_or][2][last_name][_icontains]=${cleanQ}&limit=1`;
-    
+
     const res = await fetch(url);
     const data = await res.json();
 
@@ -246,6 +255,7 @@ function renderPaymentBadge(status) {
   }
 }
 
+// ================= 3. CANVAS PODPISU =================
 function initSignaturePad() {
   sigCanvas = document.getElementById('sig-canvas');
   if (!sigCanvas) return;
@@ -305,6 +315,7 @@ function clearSignature() {
   document.getElementById('sig-placeholder').classList.remove('hidden');
 }
 
+// ================= 4. ZAPIS ODPRAWY =================
 async function confirmCheckin() {
   if (!currentAttendee) return;
   if (!hasSignature) {
