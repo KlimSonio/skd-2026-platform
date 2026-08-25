@@ -1,3 +1,4 @@
+cat << 'EOF' > /opt/skd-live/public/js/terminal.js
 import { CONFIG } from './config.js';
 
 const PIN_FLOW_TRIGGER_URL = `${CONFIG.API_URL}/flows/trigger/7f72f7ac-7e51-4528-bf0b-448f2ce9ad13`;
@@ -179,14 +180,30 @@ async function onScanSuccess(token) {
 
 async function findAndLoadAttendee(query) {
   try {
-    const cleanQ = encodeURIComponent(query);
+    let cleanQuery = query.trim();
+
+    // Jeśli zeskanowano pełny link URL, wyciągamy z niego parametr ?token=
+    if (cleanQuery.includes('token=')) {
+      try {
+        const parsedUrl = new URL(cleanQuery, window.location.origin);
+        const extractedToken = parsedUrl.searchParams.get('token');
+        if (extractedToken) {
+          cleanQuery = extractedToken;
+        }
+      } catch {
+        const match = cleanQuery.match(/token=([^&]+)/);
+        if (match) cleanQuery = decodeURIComponent(match[1]);
+      }
+    }
+
+    const cleanQ = encodeURIComponent(cleanQuery);
     const url = `${CONFIG.API_URL}/items/attendees?filter[_or][0][qr_token][_eq]=${cleanQ}&filter[_or][1][pwz][_eq]=${cleanQ}&filter[_or][2][last_name][_icontains]=${cleanQ}&limit=1`;
 
     const res = await fetch(url);
     const data = await res.json();
 
     if (!data.data || data.data.length === 0) {
-      showAlert(`Nie znaleziono uczestnika dla: "${query}"`, 'Brak wyników');
+      showAlert(`Nie znaleziono uczestnika dla: "${cleanQuery}"`, 'Brak wyników');
       startScanner();
       return;
     }
@@ -433,3 +450,4 @@ function showConfirm(msg, title = 'Wymagane potwierdzenie') {
     };
   });
 }
+EOF
