@@ -1,4 +1,4 @@
-cat << 'EOF' > /opt/skd-live/public/js/terminal.js
+
 import { CONFIG } from './config.js';
 
 const PIN_FLOW_TRIGGER_URL = `${CONFIG.API_URL}/flows/trigger/7f72f7ac-7e51-4528-bf0b-448f2ce9ad13`;
