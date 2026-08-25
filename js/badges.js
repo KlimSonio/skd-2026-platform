@@ -7,7 +7,23 @@ let currentStatusFilter = 'all';
 let currentSearchQuery = '';
 let currentPackageFilter = '';
 
+// ================= 0. BRAMKA BEZPIECZEŃSTWA (AUTORYZACJA) =================
+function isAuthenticated() {
+  return !!sessionStorage.getItem('directus_admin_token');
+}
+
+function getAuthHeaders() {
+  const token = sessionStorage.getItem('directus_admin_token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  // Jeśli użytkownik nie jest zalogowany (brak tokena JWT), wyrzuć do admin.html
+  if (!isAuthenticated()) {
+    window.location.replace('/admin.html');
+    return;
+  }
+
   await fetchAttendees();
   setupEventListeners();
 });
@@ -16,7 +32,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function fetchAttendees() {
   const grid = document.getElementById('badges-grid');
   try {
-    const res = await fetch(`${CONFIG.API_URL}/items/attendees?limit=-1&sort=last_name`);
+    const res = await fetch(`${CONFIG.API_URL}/items/attendees?limit=-1&sort=last_name`, {
+      headers: getAuthHeaders() // Bezpieczne odpytanie API
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      // Token wygasł lub jest nieprawidłowy
+      sessionStorage.removeItem('directus_admin_token');
+      window.location.replace('/admin.html');
+      return;
+    }
+
     const data = await res.json();
     allAttendees = data.data || [];
     
@@ -143,8 +169,7 @@ function createBadgeElement(attendee, qrElementId) {
 
 function getAppQrUrl(attendee) {
   const token = attendee.qr_token || `ID-${attendee.id}`;
-  // Zeskanowanie QR aparatem telefonu otwiera aplikację uczestnika z zalogowanym profilem
-  return `${window.location.origin}/app.html?token=${encodeURIComponent(token)}`;
+  return `${window.location.origin}/?token=${encodeURIComponent(token)}`;
 }
 
 // ================= 4. RENDEROWANIE SIATKI =================
@@ -227,7 +252,6 @@ function printSingleBadge() {
 
 // ================= 6. LISTENERY =================
 function setupEventListeners() {
-  // Filtry statusu
   document.querySelectorAll('.b-filter').forEach(btn => {
     btn.onclick = () => {
       currentStatusFilter = btn.dataset.filter;
