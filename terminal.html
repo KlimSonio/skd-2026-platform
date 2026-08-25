@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pl" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Medical Events – Terminal Odprawy</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif; }
+    #sig-canvas { touch-action: none; }
+    #reader video { border-radius: 0.75rem; object-fit: cover; width: 100% !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-full flex flex-col antialiased select-none">
+
+  <!-- EKRAN BLOKADY: KLAWIATURA PIN -->
+  <div id="pin-lock-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-3xl max-w-xs w-full p-6 sm:p-7 shadow-2xl flex flex-col items-center text-center gap-5 my-auto">
+      <div>
+        <div class="w-12 h-12 bg-slate-100 text-slate-900 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-2 font-bold shadow-inner">🔒</div>
+        <h2 class="text-base font-bold text-slate-900">Stanowisko Recepcji</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Wpisz 4-cyfrowy PIN stanowiska</p>
+      </div>
+
+      <div id="pin-dots-container" class="flex items-center justify-center gap-3 py-2">
+        <div id="pin-dot-1" class="w-4 h-4 rounded-full border-2 border-slate-300"></div>
+        <div id="pin-dot-2" class="w-4 h-4 rounded-full border-2 border-slate-300"></div>
+        <div id="pin-dot-3" class="w-4 h-4 rounded-full border-2 border-slate-300"></div>
+        <div id="pin-dot-4" class="w-4 h-4 rounded-full border-2 border-slate-300"></div>
+      </div>
+
+      <div id="pin-error-msg" class="hidden text-xs font-bold text-rose-600 bg-rose-50 px-3 py-1 rounded-lg border border-rose-200">
+        Nieprawidłowy kod PIN!
+      </div>
+
+      <div class="grid grid-cols-3 gap-2.5 w-full max-w-[220px]">
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="1">1</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="2">2</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="3">3</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="4">4</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="5">5</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="6">6</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="7">7</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="8">8</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="9">9</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-bold transition" data-val="clear">C</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-900 text-lg font-bold transition border border-slate-200" data-val="0">0</button>
+        <button class="pin-key h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-base font-bold transition" data-val="backspace">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pasek górny -->
+  <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between sticky top-0 z-40 shadow-xs">
+    <div class="flex items-center gap-3">
+      <img src="/logo.png" alt="Logo" class="h-8 w-auto object-contain" onerror="this.src='https://medicalevents.pl/wp-content/uploads/2023/04/logo-medical-events.png';" />
+      <div class="h-5 w-px bg-slate-200 hidden sm:block"></div>
+      <div>
+        <h1 class="text-sm font-bold tracking-tight text-slate-900 leading-tight">Terminal Odprawy</h1>
+        <span class="text-xs text-slate-500">Wydawanie identyfikatorów i podpis</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
+        <div id="operator-avatar-initials" class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-[10px]">--</div>
+        <span id="operator-display-name" class="font-bold text-slate-900">Stanowisko</span>
+      </div>
+      <button id="btn-logout-operator" title="Zablokuj terminal" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 p-2 rounded-xl text-xs transition">🔒</button>
+      <a href="/admin.html" class="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-xl transition">Admin ↗</a>
+    </div>
+  </header>
+
+  <!-- Główny obszar roboczy -->
+  <main class="flex-1 w-full max-w-2xl mx-auto p-4 flex flex-col gap-4">
+    <!-- Skaner i szukajka -->
+    <section id="scanner-section" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
+      <div class="border-b border-slate-100 pb-2.5">
+        <h2 class="text-base font-bold text-slate-900">Skaner QR & Wyszukiwanie</h2>
+        <p class="text-xs text-slate-500">Skieruj aparat na kod QR uczestnika lub wpisz nazwisko/PWZ</p>
+      </div>
+      <div class="relative bg-slate-950 rounded-2xl overflow-hidden min-h-[220px] max-h-[280px] flex items-center justify-center">
+        <div id="reader" class="w-full"></div>
+        <div id="scanner-loading-placeholder" class="text-center text-slate-400 text-xs p-6 flex flex-col items-center gap-2">
+          <div class="w-6 h-6 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
+          <span>Uruchamianie kamery...</span>
+        </div>
+      </div>
+      <div class="relative">
+        <input id="manual-token-input" type="text" placeholder="Szukaj po nazwisku, PWZ lub kodzie..." class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-24 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+        <button id="btn-manual-search" class="absolute right-1.5 top-1.5 bottom-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 rounded-lg transition">Szukaj</button>
+      </div>
+    </section>
+
+    <!-- Karta uczestnika i podpis -->
+    <section id="attendee-card-section" class="hidden bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
+      <div class="border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <span id="card-payment-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"></span>
+          <span id="card-attendee-token" class="font-mono text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded"></span>
+        </div>
+        <h2 id="card-attendee-name" class="text-xl font-bold text-slate-900 leading-tight"></h2>
+        <div id="card-attendee-pwz" class="font-mono text-xs text-slate-600 mt-0.5 font-medium"></div>
+      </div>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <span class="text-[11px] font-semibold text-slate-500 block mb-1">Pakiety / Warsztaty:</span>
+        <div id="card-packages-container" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <div id="card-unpaid-warning" class="hidden bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-1.5 font-bold"><span>⚠️</span><span>Brak opłaty za udział!</span></div>
+        <button id="btn-mark-paid-now" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-lg transition text-xs">Oznacz jako Opłacone</button>
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-900">✍️ Podpis uczestnika (potwierdzenie odbioru):</label>
+          <button id="btn-clear-sig" type="button" class="text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-md transition">Wyczyść</button>
+        </div>
+        <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-2xl relative overflow-hidden h-40">
+          <canvas id="sig-canvas" class="w-full h-full cursor-crosshair"></canvas>
+          <div id="sig-placeholder" class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400">Złóż podpis na ekranie palcem lub rysikiem</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 pt-1">
+        <button id="btn-cancel-checkin" type="button" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-3 rounded-xl transition">Anuluj</button>
+        <button id="btn-confirm-checkin" type="button" class="w-2/3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 rounded-xl transition">✓ Wydaj Identyfikator</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modale -->
+  <div id="custom-alert-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-xs w-full p-5 shadow-xl flex flex-col items-center text-center gap-3 my-auto">
+      <div class="w-10 h-10 rounded-full bg-sky-100 text-sky-800 flex items-center justify-center text-base font-bold">ℹ️</div>
+      <h3 id="alert-title" class="font-bold text-slate-900 text-sm">Informacja</h3>
+      <p id="alert-message" class="text-xs text-slate-600"></p>
+      <button id="btn-close-alert" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 rounded-lg transition mt-1">OK</button>
+    </div>
+  </div>
+
+  <div id="custom-confirm-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-2xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-xs w-full p-5 shadow-xl flex flex-col items-center text-center gap-3 my-auto">
+      <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center text-base font-bold">⚠️</div>
+      <h3 id="confirm-title" class="font-bold text-slate-900 text-sm">Potwierdzenie</h3>
+      <p id="confirm-message" class="text-xs text-slate-600"></p>
+      <div class="flex gap-2 w-full mt-1">
+        <button id="btn-confirm-no" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2 rounded-lg transition">Nie</button>
+        <button id="btn-confirm-yes" class="w-1/2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold py-2 rounded-lg transition">Tak</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/terminal.js"></script>
+</body>
+</html>
