@@ -27,11 +27,9 @@ function getLang() {
 function getLangText(obj, fieldBase) {
   if (!obj) return '';
   const lang = getLang();
-  // Sprawdź wariant np. title_en, title_pl, desc_en, desc_pl
   if (obj[`${fieldBase}_${lang}`]) return obj[`${fieldBase}_${lang}`];
   if (obj[`${fieldBase}_pl`]) return obj[`${fieldBase}_pl`];
   if (obj[fieldBase]) return obj[fieldBase];
-  // Warianty synonimiczne (np. description vs desc)
   if (fieldBase === 'desc' && obj.description) return obj.description;
   if (fieldBase === 'description' && obj.desc) return obj.desc;
   return '';
@@ -748,7 +746,7 @@ function renderDedicatedQaList() {
   });
 }
 
-// ================= 7. MODUŁ NETWORKINGU I WIZYTÓWEK =================
+// ================= 7. MODUŁ NETWORKINGU I SKANERY =================
 function renderSavedContacts() {
   const container = document.getElementById('net-contacts-list');
   const countEl = document.getElementById('net-contacts-count');
@@ -831,6 +829,46 @@ function startNetScanner() {
     async (decodedText) => {
       stopNetScanner();
       await handleScannedContact(decodedText);
+    },
+    () => {}
+  ).catch(() => {
+    alert(isEn ? 'Camera access permission denied.' : 'Brak uprawnień do kamery.');
+    stopNetScanner();
+  });
+}
+
+function startBadgeAuthScanner() {
+  const modal = document.getElementById('net-scanner-modal');
+  const isEn = isEnglish();
+  if (!modal || typeof Html5Qrcode === 'undefined') {
+    alert(isEn ? 'Scanner library not loaded.' : 'Biblioteka skanera nie została załadowana.');
+    return;
+  }
+
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  if (!netQrScanner) {
+    netQrScanner = new Html5Qrcode('net-reader');
+  }
+
+  netQrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 15, qrbox: { width: 220, height: 220 } },
+    async (decodedText) => {
+      stopNetScanner();
+      let token = decodedText.trim();
+      if (token.includes('token=')) {
+        try {
+          const parsed = new URL(token, window.location.origin);
+          token = parsed.searchParams.get('token') || token;
+        } catch {
+          const match = token.match(/token=([^&]+)/);
+          if (match) token = decodeURIComponent(match[1]);
+        }
+      }
+      pendingTokenFromUrl = token;
+      showAuthPinModal();
     },
     () => {}
   ).catch(() => {
@@ -960,6 +998,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(isEn ? 'Browsing as Guest' : 'Przeglądasz w trybie gościa');
   });
 
+  // Przycisk skanowania z banera powitalnego
+  document.getElementById('btn-banner-scan-badge')?.addEventListener('click', startBadgeAuthScanner);
+
   // Modal szczegółów sesji
   document.getElementById('btn-close-session-modal')?.addEventListener('click', closeSessionModal);
   document.getElementById('modal-backdrop-close')?.addEventListener('click', closeSessionModal);
@@ -1006,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(isEn ? '✓ Question submitted' : '✓ Wysłano pytanie');
   });
 
-  // Networking skaner
+  // Networking & Skanery
   document.getElementById('btn-start-net-scanner')?.addEventListener('click', startNetScanner);
   document.getElementById('btn-stop-net-scanner')?.addEventListener('click', stopNetScanner);
   document.getElementById('net-scanner-backdrop')?.addEventListener('click', stopNetScanner);

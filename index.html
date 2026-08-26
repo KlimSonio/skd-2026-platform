@@ -96,12 +96,20 @@
     <!-- 2. SCROLLOWALNE CIAŁO STRONY -->
     <main class="main-scroll-body">
 
-      <!-- BANER DLA GOŚCIA -->
-      <div id="guest-token-banner" class="hidden" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:11px; color:#1e3a8a; display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <strong>Posiadasz identyfikator?</strong><br>
-          <span style="font-size:10px; color:#3b82f6;">Zeskanuj aparat telefonu kod QR z identyfikatora, aby odblokować pełny profil i certyfikat.</span>
+      <!-- BANER DLA GOŚCIA / AKTYWACJA PROFILU -->
+      <div id="guest-token-banner" class="hidden" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1.5px solid #bfdbfe; border-radius: 14px; padding: 14px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(37,99,235,0.08);">
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+          <span style="font-size: 24px; line-height: 1;">🎫</span>
+          <div style="flex: 1;">
+            <strong style="font-size: 13px; color: #1e3a8a; display: block; margin-bottom: 2px;">Jesteś uczestnikiem konferencji?</strong>
+            <p style="font-size: 11px; color: #3b82f6; line-height: 1.35; margin: 0;">
+              Zeskanuj kod ze swojego identyfikatora, aby odblokować certyfikat OIL, punkty edukacyjne i spersonalizowany plan.
+            </p>
+          </div>
         </div>
+        <button id="btn-banner-scan-badge" class="btn-primary" style="width: 100%; padding: 10px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; background: #2563eb; box-shadow: 0 2px 8px rgba(37,99,235,0.25);">
+          <span>📷</span> Zeskanuj mój identyfikator
+        </button>
       </div>
 
       <!-- BANER INSTALACJI PWA -->
