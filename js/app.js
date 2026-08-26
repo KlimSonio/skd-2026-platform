@@ -614,7 +614,7 @@ function renderSavedContacts() {
   if (countEl) countEl.textContent = savedContacts.length;
 
   if (savedContacts.length === 0) {
-    container.innerHTML = '<div style="font-size:10.5px; color:#94a3b8; text-align:center; padding:10px;">Brak zapisanych wizytówek.</div>';
+    container.innerHTML = '<div style="font-size:11px; color:#94a3b8; text-align:center; padding:16px; background:#f8fafc; border:1px dashed #e2e8f0; border-radius:10px;">Brak zapisanych wizytówek. Zeskanuj kod QR z identyfikatora innej osoby.</div>';
     return;
   }
 
@@ -667,28 +667,30 @@ function downloadVCard(user) {
 }
 
 function startNetScanner() {
-  const box = document.getElementById('net-scanner-box');
-  if (!box || typeof Html5Qrcode === 'undefined') {
+  const modal = document.getElementById('net-scanner-modal');
+  if (!modal || typeof Html5Qrcode === 'undefined') {
     alert('Biblioteka skanera nie została załadowana.');
     return;
   }
 
-  box.classList.remove('hidden');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
   if (!netQrScanner) {
     netQrScanner = new Html5Qrcode('net-reader');
   }
 
   netQrScanner.start(
     { facingMode: 'environment' },
-    { fps: 10, qrbox: { width: 220, height: 220 } },
+    { fps: 15, qrbox: { width: 220, height: 220 } },
     async (decodedText) => {
       stopNetScanner();
       await handleScannedContact(decodedText);
     },
     () => {}
   ).catch(() => {
-    alert('Brak uprawnień do kamery.');
-    box.classList.add('hidden');
+    alert('Brak dostępu do kamery.');
+    stopNetScanner();
   });
 }
 
@@ -696,7 +698,9 @@ function stopNetScanner() {
   if (netQrScanner && netQrScanner.isScanning) {
     netQrScanner.stop().catch(() => {});
   }
-  document.getElementById('net-scanner-box')?.classList.add('hidden');
+  const modal = document.getElementById('net-scanner-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
 }
 
 async function handleScannedContact(rawQrText) {
@@ -856,6 +860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Networking skaner
   document.getElementById('btn-start-net-scanner')?.addEventListener('click', startNetScanner);
   document.getElementById('btn-stop-net-scanner')?.addEventListener('click', stopNetScanner);
+  document.getElementById('net-scanner-backdrop')?.addEventListener('click', stopNetScanner);
 
   // Certyfikat OIL
   document.getElementById('btn-download-certificate')?.addEventListener('click', () => {
