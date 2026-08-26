@@ -51,40 +51,59 @@
     </div>
   </div>
 
-  <!-- Pasek górny (Header Mobile-First) -->
-  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 sticky top-0 z-40 shadow-xs">
-    <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-      <img src="/logo.png" alt="Logo" class="h-6 sm:h-8 w-auto object-contain shrink-0" onerror="this.src='https://medicalevents.pl/wp-content/uploads/2023/04/logo-medical-events.png';" />
-      <div class="h-5 w-px bg-slate-200 hidden sm:block shrink-0"></div>
-      <div class="min-w-0">
-        <h1 class="text-xs sm:text-sm font-bold tracking-tight text-slate-900 leading-tight truncate">Terminal</h1>
-        <span class="text-[10px] sm:text-xs text-slate-500 hidden md:block truncate">Wydawanie identyfikatorów</span>
+  <!-- Pasek górny (Przestronny układ wielowierszowy) -->
+  <header class="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-2xl mx-auto flex flex-col gap-2.5">
+      
+      <!-- WIERSZ 1: Logo & Identyfikacja Modułu -->
+      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-2">
+        <div class="flex items-center gap-3">
+          <img src="/logo.png" alt="Logo" class="h-8 w-auto object-contain shrink-0" onerror="this.src='https://medicalevents.pl/wp-content/uploads/2023/04/logo-medical-events.png';" />
+          <div class="h-5 w-px bg-slate-200"></div>
+          <div>
+            <h1 class="text-sm font-extrabold tracking-tight text-slate-900 leading-tight">Terminal Odprawy</h1>
+            <span class="text-[11px] text-slate-500 font-medium">Wydawanie identyfikatorów & podpis</span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-      <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-xl px-2 py-1 sm:px-3 sm:py-1.5 text-xs max-w-[120px] sm:max-w-[200px]">
-        <div id="operator-avatar-initials" class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-[9px] sm:text-[10px] shrink-0">--</div>
-        <span id="operator-display-name" class="font-bold text-slate-900 truncate text-[11px] sm:text-xs">Stanowisko</span>
+      <!-- WIERSZ 2: Stanowisko Operatora & Szybkie Akcje -->
+      <div class="flex items-center justify-between gap-2 pt-0.5">
+        <!-- Aktywny operator -->
+        <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 min-w-0 flex-1">
+          <div id="operator-avatar-initials" class="w-6 h-6 rounded-full bg-slate-900 text-white font-bold flex items-center justify-center text-[10px] shrink-0 shadow-2xs">--</div>
+          <div class="min-w-0">
+            <div class="text-[9px] uppercase tracking-wider font-bold text-slate-400 leading-none">Stanowisko</div>
+            <span id="operator-display-name" class="font-bold text-slate-900 truncate text-xs block leading-tight mt-0.5">Stanowisko</span>
+          </div>
+        </div>
+
+        <!-- Przyciski funkcyjne -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="btn-logout-operator" title="Zablokuj terminal" class="flex items-center gap-1.5 text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-2 rounded-xl text-xs font-semibold transition">
+            <span>🔒</span>
+            <span>Zablokuj</span>
+          </button>
+          <a href="/admin.html" class="text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-2 rounded-xl transition flex items-center gap-1">
+            <span>Admin</span>
+            <span class="text-[10px]">↗</span>
+          </a>
+        </div>
       </div>
-      <button id="btn-logout-operator" title="Zablokuj terminal" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 p-1.5 sm:p-2 rounded-xl text-xs transition shrink-0">🔒</button>
-      <a href="/admin.html" class="text-[11px] sm:text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-2 py-1 sm:px-3 sm:py-1.5 rounded-xl transition flex items-center gap-1 shrink-0">
-        <span>Admin</span>
-        <span class="text-[9px]">↗</span>
-      </a>
+
     </div>
   </header>
 
   <!-- Główny obszar roboczy -->
-  <main class="flex-1 w-full max-w-2xl mx-auto p-3 sm:p-4 flex flex-col gap-3 sm:gap-4">
+  <main class="flex-1 w-full max-w-2xl mx-auto p-4 flex flex-col gap-4">
     <!-- Skaner i szukajka -->
-    <section id="scanner-section" class="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col gap-3 sm:gap-4">
-      <div class="border-b border-slate-100 pb-2">
-        <h2 class="text-sm sm:text-base font-bold text-slate-900">Skaner QR & Wyszukiwanie</h2>
-        <p class="text-[11px] sm:text-xs text-slate-500">Skieruj aparat na kod QR uczestnika lub wpisz nazwisko/PWZ</p>
+    <section id="scanner-section" class="bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
+      <div class="border-b border-slate-100 pb-2.5">
+        <h2 class="text-base font-bold text-slate-900">Skaner QR & Wyszukiwanie</h2>
+        <p class="text-xs text-slate-500">Skieruj aparat na kod QR uczestnika lub wpisz nazwisko/PWZ</p>
       </div>
 
-      <div class="relative bg-slate-950 rounded-xl sm:rounded-2xl overflow-hidden min-h-[220px] max-h-[280px] flex items-center justify-center">
+      <div class="relative bg-slate-950 rounded-2xl overflow-hidden min-h-[220px] max-h-[280px] flex items-center justify-center">
         <div id="reader" class="w-full"></div>
         <div id="scanner-loading-placeholder" class="text-center text-slate-400 text-xs p-6 flex flex-col items-center gap-2">
           <div class="w-6 h-6 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
@@ -94,24 +113,24 @@
 
       <div class="relative flex items-center">
         <span class="absolute left-3 text-slate-400 text-xs pointer-events-none">🔍</span>
-        <input id="manual-token-input" type="text" placeholder="Szukaj po nazwisku, PWZ..." class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-20 py-2 sm:py-2.5 text-xs text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
-        <button id="btn-manual-search" class="absolute right-1 top-1 bottom-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 rounded-lg transition">Szukaj</button>
+        <input id="manual-token-input" type="text" placeholder="Szukaj po nazwisku, PWZ lub kodzie..." class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-24 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-slate-500 focus:bg-white" />
+        <button id="btn-manual-search" class="absolute right-1.5 top-1.5 bottom-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 rounded-lg transition">Szukaj</button>
       </div>
     </section>
 
     <!-- Karta uczestnika i podpis -->
-    <section id="attendee-card-section" class="hidden bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs flex flex-col gap-3 sm:gap-4">
-      <div class="border-b border-slate-100 pb-2.5">
+    <section id="attendee-card-section" class="hidden bg-white border border-slate-200 rounded-3xl p-5 shadow-xs flex flex-col gap-4">
+      <div class="border-b border-slate-100 pb-3">
         <div class="flex items-center gap-2 mb-1">
-          <span id="card-payment-badge" class="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold"></span>
-          <span id="card-attendee-token" class="font-mono text-[10.5px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded"></span>
+          <span id="card-payment-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold"></span>
+          <span id="card-attendee-token" class="font-mono text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded"></span>
         </div>
-        <h2 id="card-attendee-name" class="text-lg sm:text-xl font-bold text-slate-900 leading-tight"></h2>
+        <h2 id="card-attendee-name" class="text-xl font-bold text-slate-900 leading-tight"></h2>
         <div id="card-attendee-pwz" class="font-mono text-xs text-slate-600 mt-0.5 font-medium"></div>
       </div>
 
-      <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3">
-        <span class="text-[10.5px] sm:text-[11px] font-semibold text-slate-500 block mb-1">Pakiety / Warsztaty:</span>
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+        <span class="text-[11px] font-semibold text-slate-500 block mb-1">Pakiety / Warsztaty:</span>
         <div id="card-packages-container" class="flex flex-wrap gap-1.5"></div>
       </div>
 
@@ -122,18 +141,18 @@
 
       <div class="flex flex-col gap-1.5">
         <div class="flex items-center justify-between">
-          <label class="text-xs font-bold text-slate-900">✍️ Podpis uczestnika (potwierdzenie):</label>
+          <label class="text-xs font-bold text-slate-900">✍️ Podpis uczestnika (potwierdzenie odbioru):</label>
           <button id="btn-clear-sig" type="button" class="text-xs text-slate-500 hover:text-slate-800 font-semibold px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-md transition">Wyczyść</button>
         </div>
-        <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-2xl relative overflow-hidden h-36 sm:h-40">
+        <div class="border-2 border-dashed border-slate-300 bg-slate-50 rounded-2xl relative overflow-hidden h-40">
           <canvas id="sig-canvas" class="w-full h-full cursor-crosshair"></canvas>
           <div id="sig-placeholder" class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400">Złóż podpis na ekranie palcem lub rysikiem</div>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 pt-1">
-        <button id="btn-cancel-checkin" type="button" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2.5 sm:py-3 rounded-xl transition">Anuluj</button>
-        <button id="btn-confirm-checkin" type="button" class="w-2/3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 sm:py-3 rounded-xl transition">✓ Wydaj Identyfikator</button>
+      <div class="flex items-center gap-2.5 pt-1">
+        <button id="btn-cancel-checkin" type="button" class="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-3 rounded-xl transition">Anuluj</button>
+        <button id="btn-confirm-checkin" type="button" class="w-2/3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 rounded-xl transition">✓ Wydaj Identyfikator</button>
       </div>
     </section>
   </main>
@@ -160,6 +179,6 @@
     </div>
   </div>
 
-  <script type="module" src="js/terminal.js?v=4.3"></script>
+  <script type="module" src="js/terminal.js?v=4.4"></script>
 </body>
 </html>
