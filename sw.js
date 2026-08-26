@@ -1,10 +1,12 @@
-const CACHE_NAME = 'skd-2026-v8';
+const CACHE_NAME = 'skd-2026-v9';
 
 const ASSETS_TO_CACHE = [
   '/',
-  '/app.html',
+  '/index.html',
   '/css/style.css',
-  '/app.js',
+  '/css/splash.css',
+  '/js/app.js',
+  '/js/config.js',
   '/data/schedule.js',
   '/manifest.json'
 ];

@@ -16,25 +16,30 @@ function triggerHaptic(type = 'light') {
   } catch {}
 }
 
-// ================= 1. PERSONALIZACJA UCZESTNIKA (DIRECTUS / TOKEN) =================
+// ================= 1. PROFIL UCZESTNIKA & BRAMKA PIN =================
 let currentAttendeeProfile = null;
+let pendingTokenFromUrl = null;
 
 async function initAttendeeProfile() {
   const urlParams = new URLSearchParams(window.location.search);
   const tokenFromUrl = urlParams.get('token');
   const storedToken = localStorage.getItem('skd_attendee_token');
-
-  const activeToken = tokenFromUrl || storedToken;
+  const storedPin = localStorage.getItem('skd_attendee_pin');
 
   if (tokenFromUrl) {
-    localStorage.setItem('skd_attendee_token', tokenFromUrl);
-    // Usunięcie tokena z paska adresu dla estetyki
+    pendingTokenFromUrl = tokenFromUrl;
     window.history.replaceState({}, document.title, window.location.pathname);
+
+    if (tokenFromUrl !== storedToken) {
+      showAuthPinModal();
+      return;
+    }
   }
 
-  if (activeToken) {
+  const activeToken = storedToken;
+  if (activeToken && storedPin) {
     try {
-      const res = await fetch(`${CONFIG.API_URL}/items/attendees?filter[qr_token][_eq]=${encodeURIComponent(activeToken)}&limit=1`);
+      const res = await fetch(`${CONFIG.API_URL}/items/attendees?filter[qr_token][_eq]=${encodeURIComponent(activeToken)}&filter[app_pin][_eq]=${encodeURIComponent(storedPin)}&limit=1`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         currentAttendeeProfile = data.data[0];
@@ -43,11 +48,10 @@ async function initAttendeeProfile() {
         return;
       }
     } catch (err) {
-      console.warn('Błąd pobierania danych profilu:', err);
+      console.warn('Tryb offline / Błąd pobierania profilu:', err);
     }
   }
 
-  // Próba odtworzenia z cache offline
   const cachedData = localStorage.getItem('skd_attendee_data');
   if (cachedData) {
     try {
@@ -57,8 +61,85 @@ async function initAttendeeProfile() {
     } catch {}
   }
 
-  // Tryb gościa (brak tokena)
   document.getElementById('guest-token-banner')?.classList.remove('hidden');
+}
+
+function showAuthPinModal() {
+  const modal = document.getElementById('auth-pin-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const pinInput = document.getElementById('auth-pin-input');
+  if (pinInput) {
+    pinInput.value = '';
+    setTimeout(() => pinInput.focus(), 150);
+  }
+  document.getElementById('auth-pin-error')?.classList.add('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeAuthPinModal() {
+  const modal = document.getElementById('auth-pin-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+async function verifyAuthPin() {
+  const pinInput = document.getElementById('auth-pin-input');
+  const errorEl = document.getElementById('auth-pin-error');
+  const btnVerify = document.getElementById('btn-auth-verify-pin');
+  const pin = pinInput?.value.trim();
+  const tokenToVerify = pendingTokenFromUrl || localStorage.getItem('skd_attendee_token');
+
+  if (!pin || pin.length !== 4 || !tokenToVerify) {
+    if (errorEl) {
+      errorEl.textContent = 'Wpisz 4-cyfrowy kod PIN.';
+      errorEl.classList.remove('hidden');
+    }
+    triggerHaptic('error');
+    return;
+  }
+
+  if (btnVerify) {
+    btnVerify.disabled = true;
+    btnVerify.textContent = 'Sprawdzanie...';
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/items/attendees?filter[qr_token][_eq]=${encodeURIComponent(tokenToVerify)}&filter[app_pin][_eq]=${encodeURIComponent(pin)}&limit=1`);
+    const data = await res.json();
+
+    if (data.data && data.data.length > 0) {
+      currentAttendeeProfile = data.data[0];
+      localStorage.setItem('skd_attendee_token', tokenToVerify);
+      localStorage.setItem('skd_attendee_pin', pin);
+      localStorage.setItem('skd_attendee_data', JSON.stringify(currentAttendeeProfile));
+      applyAttendeeProfile(currentAttendeeProfile);
+      closeAuthPinModal();
+      triggerHaptic('success');
+      showToast('✓ Profil odblokowany pomyślnie!');
+    } else {
+      if (errorEl) {
+        errorEl.textContent = 'Nieprawidłowy kod PIN. Spróbuj ponownie.';
+        errorEl.classList.remove('hidden');
+      }
+      triggerHaptic('error');
+      if (pinInput) {
+        pinInput.value = '';
+        pinInput.focus();
+      }
+    }
+  } catch (err) {
+    if (errorEl) {
+      errorEl.textContent = 'Błąd połączenia. Sprawdź internet.';
+      errorEl.classList.remove('hidden');
+    }
+    triggerHaptic('error');
+  } finally {
+    if (btnVerify) {
+      btnVerify.disabled = false;
+      btnVerify.textContent = 'Odblokuj mój profil';
+    }
+  }
 }
 
 function applyAttendeeProfile(att) {
@@ -74,21 +155,22 @@ function applyAttendeeProfile(att) {
   if (nameEl) nameEl.textContent = fullName;
   if (pwzEl) pwzEl.innerHTML = att.pwz ? `PWZ: <strong style="color:#0f172a;">${att.pwz}</strong>` : `Uczestnik`;
 
-  if (att.attended) {
-    badgeEl.style.background = '#ecfdf5';
-    badgeEl.style.borderColor = '#a7f3d0';
-    badgeEl.style.color = '#065f46';
-    badgeDot.style.backgroundColor = '#10b981';
-    badgeText.textContent = 'OBECNY';
-  } else {
-    badgeEl.style.background = '#fef3c7';
-    badgeEl.style.borderColor = '#fde68a';
-    badgeEl.style.color = '#92400e';
-    badgeDot.style.backgroundColor = '#f59e0b';
-    badgeText.textContent = 'PRZED ODPRAWĄ';
+  if (badgeEl && badgeDot && badgeText) {
+    if (att.attended) {
+      badgeEl.style.background = '#ecfdf5';
+      badgeEl.style.borderColor = '#a7f3d0';
+      badgeEl.style.color = '#065f46';
+      badgeDot.style.backgroundColor = '#10b981';
+      badgeText.textContent = 'OBECNY';
+    } else {
+      badgeEl.style.background = '#fef3c7';
+      badgeEl.style.borderColor = '#fde68a';
+      badgeEl.style.color = '#92400e';
+      badgeDot.style.backgroundColor = '#f59e0b';
+      badgeText.textContent = 'PRZED ODPRAWĄ';
+    }
   }
 
-  // Zakładka OIL
   const oilName = document.getElementById('oil-attendee-name');
   const oilPwz = document.getElementById('oil-attendee-pwz');
   const oilStatus = document.getElementById('oil-attendance-status');
@@ -188,7 +270,6 @@ function getNavigationGuide(roomShort) {
   };
 }
 
-// Antyspam Q&A
 const BANNED_PATTERNS = [/kurw/i, /chuj/i, /jeb/i, /pierd/i, /pizd/i, /debil/i, /idiot/i];
 function sanitizeQuestion(text) {
   const clean = text.trim().replace(/\s+/g, ' ');
@@ -207,7 +288,8 @@ let activeQuestionData = null;
 let currentGlobalDay = 'day-1';
 let currentActiveTab = 'program';
 let userCalendarPlan = JSON.parse(localStorage.getItem('med_conf_cal_plan') || '["d1_s2", "d2_s1"]');
-let searchOriginDay = null;
+let savedContacts = JSON.parse(localStorage.getItem('skd_saved_contacts') || '[]');
+let netQrScanner = null;
 
 // ================= 3. KALENDARZ I WYSZUKIWARKA =================
 function renderProgramTimeline() {
@@ -506,7 +588,7 @@ function renderDedicatedQaList() {
     container.innerHTML = '<div style="font-size:10px; color:#94a3b8; text-align:center; padding:6px;">Brak pytań. Zadaj pierwsze!</div>';
     return;
   }
-  activeQuestionData.qaList.forEach((q, idx) => {
+  activeQuestionData.qaList.forEach((q) => {
     const item = document.createElement('div');
     item.className = 'qa-item';
     item.innerHTML = `
@@ -523,12 +605,143 @@ function renderDedicatedQaList() {
   });
 }
 
-// ================= 6. ZAKŁADKI I NAWIGACJA =================
+// ================= 6. MODUŁ NETWORKINGU I WIZYTÓWEK =================
+function renderSavedContacts() {
+  const container = document.getElementById('net-contacts-list');
+  const countEl = document.getElementById('net-contacts-count');
+  if (!container) return;
+
+  if (countEl) countEl.textContent = savedContacts.length;
+
+  if (savedContacts.length === 0) {
+    container.innerHTML = '<div style="font-size:10.5px; color:#94a3b8; text-align:center; padding:10px;">Brak zapisanych wizytówek.</div>';
+    return;
+  }
+
+  container.innerHTML = savedContacts.map((contact, idx) => {
+    const title = contact.academic_title ? `${contact.academic_title} ` : '';
+    const pwzInfo = contact.pwz ? `<span style="font-size:9.5px; color:#0284c7; font-weight:700;">PWZ: ${contact.pwz}</span>` : '<span style="font-size:9.5px; color:#64748b;">Uczestnik</span>';
+    return `
+      <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="min-width:0;">
+          <div style="font-size:12px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${title}${contact.first_name} ${contact.last_name}</div>
+          <div>${pwzInfo}</div>
+        </div>
+        <div style="display:flex; gap:4px; flex-shrink:0;">
+          <button data-download-contact="${idx}" class="btn-primary" style="font-size:10px; padding:5px 8px;">📥 VCF</button>
+          <button data-delete-contact="${idx}" style="background:#f1f5f9; color:#ef4444; border:1px solid #cbd5e1; border-radius:6px; font-size:10px; padding:5px 8px; cursor:pointer;">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.querySelectorAll('[data-download-contact]').forEach(btn => {
+    btn.onclick = () => {
+      const c = savedContacts[parseInt(btn.dataset.downloadContact, 10)];
+      if (c) downloadVCard(c);
+    };
+  });
+
+  container.querySelectorAll('[data-delete-contact]').forEach(btn => {
+    btn.onclick = () => {
+      const idx = parseInt(btn.dataset.deleteContact, 10);
+      savedContacts.splice(idx, 1);
+      localStorage.setItem('skd_saved_contacts', JSON.stringify(savedContacts));
+      renderSavedContacts();
+      showToast('Usunięto kontakt');
+    };
+  });
+}
+
+function downloadVCard(user) {
+  const vcard = `BEGIN:VCARD\nVERSION:3.0\nN:${user.last_name};${user.first_name};;;${user.academic_title || ''}\nFN:${user.academic_title ? user.academic_title + ' ' : ''}${user.first_name} ${user.last_name}\nEMAIL:${user.email || ''}\nTEL:${user.phone || ''}\nORG:SKD 2026\nEND:VCARD`;
+  const blob = new Blob([vcard], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${user.first_name}_${user.last_name}_SKD2026.vcf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function startNetScanner() {
+  const box = document.getElementById('net-scanner-box');
+  if (!box || typeof Html5Qrcode === 'undefined') {
+    alert('Biblioteka skanera nie została załadowana.');
+    return;
+  }
+
+  box.classList.remove('hidden');
+  if (!netQrScanner) {
+    netQrScanner = new Html5Qrcode('net-reader');
+  }
+
+  netQrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    async (decodedText) => {
+      stopNetScanner();
+      await handleScannedContact(decodedText);
+    },
+    () => {}
+  ).catch(() => {
+    alert('Brak uprawnień do kamery.');
+    box.classList.add('hidden');
+  });
+}
+
+function stopNetScanner() {
+  if (netQrScanner && netQrScanner.isScanning) {
+    netQrScanner.stop().catch(() => {});
+  }
+  document.getElementById('net-scanner-box')?.classList.add('hidden');
+}
+
+async function handleScannedContact(rawQrText) {
+  let token = rawQrText.trim();
+  if (token.includes('token=')) {
+    try {
+      const parsed = new URL(token, window.location.origin);
+      token = parsed.searchParams.get('token') || token;
+    } catch {
+      const match = token.match(/token=([^&]+)/);
+      if (match) token = decodeURIComponent(match[1]);
+    }
+  }
+
+  try {
+    const res = await fetch(`${CONFIG.API_URL}/items/attendees?filter[qr_token][_eq]=${encodeURIComponent(token)}&limit=1`);
+    const data = await res.json();
+
+    if (data.data && data.data.length > 0) {
+      const newContact = data.data[0];
+      const exists = savedContacts.some(c => String(c.id) === String(newContact.id));
+      if (!exists) {
+        savedContacts.unshift(newContact);
+        localStorage.setItem('skd_saved_contacts', JSON.stringify(savedContacts));
+      }
+      renderSavedContacts();
+      triggerHaptic('success');
+      showToast(`✓ Zapisano kontakt: ${newContact.first_name} ${newContact.last_name}`);
+      downloadVCard(newContact);
+    } else {
+      triggerHaptic('error');
+      alert('Nie znaleziono profilu dla zeskanowanego kodu.');
+    }
+  } catch (err) {
+    triggerHaptic('error');
+    alert('Błąd sieci podczas pobierania wizytówki.');
+  }
+}
+
+// ================= 7. ZAKŁADKI I NAWIGACJA =================
 function switchTab(tabId) {
   triggerHaptic('light');
   currentActiveTab = tabId;
 
-  ['program', 'myplan', 'vote', 'oil'].forEach(t => {
+  ['program', 'myplan', 'vote', 'oil', 'network'].forEach(t => {
     document.getElementById(`tab-${t}`)?.classList.add('hidden');
     document.getElementById(`nav-${t}`)?.classList.remove('active');
   });
@@ -547,6 +760,10 @@ function switchTab(tabId) {
     daysBar?.classList.add('hidden');
     searchBar?.classList.remove('hidden');
     renderMyPlanTimeline();
+  } else if (tabId === 'network') {
+    daysBar?.classList.add('hidden');
+    searchBar?.classList.add('hidden');
+    renderSavedContacts();
   } else {
     daysBar?.classList.add('hidden');
     searchBar?.classList.add('hidden');
@@ -558,10 +775,10 @@ function showToast(text) {
   if (!toast) return;
   toast.innerText = text;
   toast.classList.remove('hidden');
-  setTimeout(() => toast.classList.add('hidden'), 1800);
+  setTimeout(() => toast.classList.add('hidden'), 2000);
 }
 
-// ================= 7. START & LISTENERY =================
+// ================= 8. INICJALIZACJA & LISTENERY =================
 document.addEventListener('DOMContentLoaded', async () => {
   await initAttendeeProfile();
   updateMyPlanCount();
@@ -572,13 +789,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-day-2')?.addEventListener('click', () => switchGlobalDay('day-2'));
   document.getElementById('btn-day-3')?.addEventListener('click', () => switchGlobalDay('day-3'));
 
-  // Nawigacja dół
+  // Nawigacja dolna (5 zakładek)
   document.getElementById('nav-program')?.addEventListener('click', () => switchTab('program'));
   document.getElementById('nav-myplan')?.addEventListener('click', () => switchTab('myplan'));
   document.getElementById('nav-vote')?.addEventListener('click', () => switchTab('vote'));
   document.getElementById('nav-oil')?.addEventListener('click', () => switchTab('oil'));
+  document.getElementById('nav-network')?.addEventListener('click', () => switchTab('network'));
 
-  // Modal
+  // Autoryzacja PIN
+  document.getElementById('btn-auth-verify-pin')?.addEventListener('click', verifyAuthPin);
+  document.getElementById('auth-pin-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') verifyAuthPin();
+  });
+  document.getElementById('btn-auth-continue-guest')?.addEventListener('click', () => {
+    closeAuthPinModal();
+    document.getElementById('guest-token-banner')?.classList.remove('hidden');
+    showToast('Przeglądasz w trybie gościa');
+  });
+
+  // Modal szczegółów sesji
   document.getElementById('btn-close-session-modal')?.addEventListener('click', closeSessionModal);
   document.getElementById('modal-backdrop-close')?.addEventListener('click', closeSessionModal);
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSessionModal(); });
@@ -624,12 +853,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('✓ Wysłano pytanie');
   });
 
+  // Networking skaner
+  document.getElementById('btn-start-net-scanner')?.addEventListener('click', startNetScanner);
+  document.getElementById('btn-stop-net-scanner')?.addEventListener('click', stopNetScanner);
+
   // Certyfikat OIL
   document.getElementById('btn-download-certificate')?.addEventListener('click', () => {
     showToast('Certyfikat PDF zostanie przesłany na adres e-mail.');
   });
 
-  // Splash Screen timeout
+  // Wyszukiwarka globalna
+  const searchInput = document.getElementById('global-search-input');
+  const clearBtn = document.getElementById('search-clear-btn');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const q = cleanString(e.target.value);
+      if (clearBtn) clearBtn.classList.toggle('hidden', q.length === 0);
+      document.querySelectorAll('.session-cards .card').forEach(card => {
+        const data = card.dataset.search || '';
+        const match = q === '' || data.includes(q);
+        card.style.display = match ? '' : 'none';
+      });
+      document.querySelectorAll('.session-slot').forEach(slot => {
+        const visible = Array.from(slot.querySelectorAll('.card')).some(c => c.style.display !== 'none');
+        slot.style.display = visible ? '' : 'none';
+      });
+    });
+
+    clearBtn?.addEventListener('click', () => {
+      searchInput.value = '';
+      clearBtn.classList.add('hidden');
+      document.querySelectorAll('.session-cards .card, .session-slot').forEach(el => el.style.display = '');
+    });
+  }
+
+  // Splash Screen
   const splash = document.getElementById('app-splash-screen');
   if (splash) {
     setTimeout(() => {

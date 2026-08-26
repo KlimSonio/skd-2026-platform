@@ -172,7 +172,7 @@ input, textarea {
   justify-content: center;
 }
 
-/* 2. GŁÓWNY OBSZAR ROBOCZY (ZWIĘKSZONY PADDING-TOP POD POWIĘKSZONE LOGO) */
+/* 2. GŁÓWNY OBSZAR ROBOCZY */
 .main-scroll-body {
   padding-top: 195px;
   padding-bottom: 145px;
@@ -281,6 +281,12 @@ input, textarea {
   background: #ffffff;
   border-radius: 10px;
   padding: 9px 11px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 .card.selected {
   background: #ecfdf5;
@@ -380,6 +386,7 @@ input, textarea {
   padding: 8px 14px;
   border-radius: 9px;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 .btn-primary:active {
   transform: scale(0.97);
@@ -487,7 +494,7 @@ input, textarea {
   color: #065f46;
 }
 
-/* 3. DOLNY PASEK ZE SPONSORAMI */
+/* 3. DOLNY PASEK NAWIGACJI */
 .footer-fixed-bar {
   position: fixed;
   bottom: 0;
@@ -495,9 +502,11 @@ input, textarea {
   right: 0;
   max-width: 460px;
   margin: 0 auto;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid #e2e8f0;
-  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 6px));
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 6px));
   z-index: 50;
 }
 .sponsors-box {
@@ -528,28 +537,48 @@ input, textarea {
 
 .nav-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
 }
 .nav-item {
-  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
   background: transparent;
-  padding: 8px 2px;
-  font-size: 10.5px;
-  font-weight: 700;
-  border-radius: 8px;
+  padding: 5px 1px 4px;
+  border-radius: 10px;
   color: #64748b;
   cursor: pointer;
-  text-align: center;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+}
+.nav-item .nav-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+.nav-item .nav-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   white-space: nowrap;
+  line-height: 1.1;
 }
 .nav-item.active {
+  color: #2563eb;
   background: #eff6ff;
-  color: #1e3a8a;
-  border-color: #bfdbfe;
+}
+.nav-item.active .nav-icon {
+  transform: scale(1.12);
 }
 .nav-item:active {
-  transform: scale(0.96);
+  transform: scale(0.92);
 }
 
 .toast {
@@ -571,65 +600,7 @@ input, textarea {
 
 .hidden { display: none !important; }
 
-/* Wyróżnienie całej aktywnej karty sesji */
-.card.is-live {
-  border: 1.5px solid #2563eb !important;
-  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%) !important;
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.12) !important;
-  position: relative;
-}
-
-/* Wskaźnik i kropka czasu na osi */
-.session-slot.slot-live .time-start {
-  color: #2563eb !important;
-  font-weight: 800;
-}
-
-.t-dot.live {
-  background: #2563eb !important;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
-}
-
-/* Badge statusu */
-.live-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 3px 8px;
-  border-radius: 6px;
-  margin-left: 8px;
-}
-
-.live-dot {
-  width: 6px;
-  height: 6px;
-  background-color: #60a5fa;
-  border-radius: 50%;
-  animation: pulse-live 1.4s infinite ease-in-out;
-}
-
-@keyframes pulse-live {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.7); }
-}
-
-/* Styl interaktywnej karty */
-.card {
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-}
-
-/* Modal Szczegółów */
+/* MODALE */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -639,7 +610,6 @@ input, textarea {
   justify-content: center;
   padding: 16px;
 }
-
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -647,7 +617,6 @@ input, textarea {
   backdrop-filter: blur(4px);
   animation: fadeIn 0.2s ease-out;
 }
-
 .modal-dialog {
   position: relative;
   background: #ffffff;
@@ -661,7 +630,6 @@ input, textarea {
   z-index: 1001;
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .modal-close-btn {
   position: absolute;
   top: 14px;
@@ -679,20 +647,16 @@ input, textarea {
   justify-content: center;
   line-height: 1;
 }
-
 .modal-close-btn:hover {
   background: #e2e8f0;
   color: #0f172a;
 }
-
-/* Zawartość modala */
 .modal-meta-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
-
 .modal-badge {
   font-size: 11px;
   font-weight: 700;
@@ -701,7 +665,6 @@ input, textarea {
   background: #eff6ff;
   color: #2563eb;
 }
-
 .modal-title {
   font-size: 18px;
   font-weight: 700;
@@ -709,7 +672,6 @@ input, textarea {
   line-height: 1.35;
   margin-bottom: 12px;
 }
-
 .modal-speaker-box {
   display: flex;
   align-items: center;
@@ -719,13 +681,11 @@ input, textarea {
   border-radius: 10px;
   margin-bottom: 16px;
 }
-
 .modal-speaker-name {
   font-weight: 600;
   font-size: 13.5px;
   color: #1e293b;
 }
-
 .modal-desc {
   font-size: 13px;
   line-height: 1.6;
@@ -737,7 +697,6 @@ input, textarea {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }

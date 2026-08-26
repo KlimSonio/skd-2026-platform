@@ -486,7 +486,7 @@
       document.getElementById('screen-question').innerText = data.question;
       document.getElementById('screen-sub').innerText = data.questionSub;
 
-      const joinUrl = window.location.origin + '/app.html';
+      const joinUrl = window.location.origin + '/';
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
       new QRCode(qrContainer, {
