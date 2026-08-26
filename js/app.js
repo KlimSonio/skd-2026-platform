@@ -16,7 +16,66 @@ function triggerHaptic(type = 'light') {
   } catch {}
 }
 
-// ================= 1. PROFIL UCZESTNIKA & BRAMKA PIN =================
+// ================= 1. WYBÓR JĘZYKA & FIRST LAUNCH MODAL =================
+function setupLanguageSelection() {
+  const currentToken = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('skd_attendee_token');
+  const tokenParam = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
+  const isEnPage = window.location.pathname.includes('index-en.html');
+  const savedLang = localStorage.getItem('skd_lang_chosen');
+
+  const langModal = document.getElementById('lang-select-modal');
+  const btnModalPl = document.getElementById('btn-modal-choose-pl');
+  const btnModalEn = document.getElementById('btn-modal-choose-en');
+
+  const btnPl = document.getElementById('btn-lang-pl');
+  const btnEn = document.getElementById('btn-lang-en');
+
+  if (btnPl && btnEn) {
+    if (isEnPage) {
+      btnEn.classList.add('active');
+      btnPl.classList.remove('active');
+    } else {
+      btnPl.classList.add('active');
+      btnEn.classList.remove('active');
+    }
+
+    btnPl.onclick = () => selectLanguage('pl', tokenParam);
+    btnEn.onclick = () => selectLanguage('en', tokenParam);
+  }
+
+  if (!savedLang && langModal) {
+    langModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    if (btnModalPl) {
+      btnModalPl.onclick = () => {
+        langModal.style.display = 'none';
+        document.body.style.overflow = '';
+        selectLanguage('pl', tokenParam);
+      };
+    }
+
+    if (btnModalEn) {
+      btnModalEn.onclick = () => {
+        langModal.style.display = 'none';
+        document.body.style.overflow = '';
+        selectLanguage('en', tokenParam);
+      };
+    }
+  }
+}
+
+function selectLanguage(lang, tokenParam) {
+  localStorage.setItem('skd_lang_chosen', lang);
+
+  if (lang === 'en' && !window.location.pathname.includes('index-en.html')) {
+    window.location.href = `/index-en.html${tokenParam}`;
+  } else if (lang === 'pl' && window.location.pathname.includes('index-en.html')) {
+    window.location.href = `/${tokenParam}`;
+  }
+}
+
+// ================= 2. PROFIL UCZESTNIKA & BRAMKA PIN =================
 let currentAttendeeProfile = null;
 let pendingTokenFromUrl = null;
 
@@ -48,7 +107,7 @@ async function initAttendeeProfile() {
         return;
       }
     } catch (err) {
-      console.warn('Tryb offline / Błąd pobierania profilu:', err);
+      console.warn('Offline / Błąd API:', err);
     }
   }
 
@@ -87,12 +146,13 @@ async function verifyAuthPin() {
   const pinInput = document.getElementById('auth-pin-input');
   const errorEl = document.getElementById('auth-pin-error');
   const btnVerify = document.getElementById('btn-auth-verify-pin');
+  const isEn = window.location.pathname.includes('index-en.html');
   const pin = pinInput?.value.trim();
   const tokenToVerify = pendingTokenFromUrl || localStorage.getItem('skd_attendee_token');
 
   if (!pin || pin.length !== 4 || !tokenToVerify) {
     if (errorEl) {
-      errorEl.textContent = 'Wpisz 4-cyfrowy kod PIN.';
+      errorEl.textContent = isEn ? 'Enter the 4-digit PIN.' : 'Wpisz 4-cyfrowy kod PIN.';
       errorEl.classList.remove('hidden');
     }
     triggerHaptic('error');
@@ -101,7 +161,7 @@ async function verifyAuthPin() {
 
   if (btnVerify) {
     btnVerify.disabled = true;
-    btnVerify.textContent = 'Sprawdzanie...';
+    btnVerify.textContent = isEn ? 'Verifying...' : 'Sprawdzanie...';
   }
 
   try {
@@ -116,10 +176,10 @@ async function verifyAuthPin() {
       applyAttendeeProfile(currentAttendeeProfile);
       closeAuthPinModal();
       triggerHaptic('success');
-      showToast('✓ Profil odblokowany pomyślnie!');
+      showToast(isEn ? '✓ Profile unlocked!' : '✓ Profil odblokowany pomyślnie!');
     } else {
       if (errorEl) {
-        errorEl.textContent = 'Nieprawidłowy kod PIN. Spróbuj ponownie.';
+        errorEl.textContent = isEn ? 'Invalid PIN code. Please try again.' : 'Nieprawidłowy kod PIN. Spróbuj ponownie.';
         errorEl.classList.remove('hidden');
       }
       triggerHaptic('error');
@@ -130,19 +190,20 @@ async function verifyAuthPin() {
     }
   } catch (err) {
     if (errorEl) {
-      errorEl.textContent = 'Błąd połączenia. Sprawdź internet.';
+      errorEl.textContent = isEn ? 'Connection error. Check internet.' : 'Błąd połączenia. Sprawdź internet.';
       errorEl.classList.remove('hidden');
     }
     triggerHaptic('error');
   } finally {
     if (btnVerify) {
       btnVerify.disabled = false;
-      btnVerify.textContent = 'Odblokuj mój profil';
+      btnVerify.textContent = isEn ? 'Unlock My Profile' : 'Odblokuj mój profil';
     }
   }
 }
 
 function applyAttendeeProfile(att) {
+  const isEn = window.location.pathname.includes('index-en.html');
   document.getElementById('guest-token-banner')?.classList.add('hidden');
 
   const fullName = `${att.academic_title ? att.academic_title + ' ' : ''}${att.first_name} ${att.last_name}`;
@@ -153,7 +214,7 @@ function applyAttendeeProfile(att) {
   const badgeText = document.getElementById('user-badge-text');
 
   if (nameEl) nameEl.textContent = fullName;
-  if (pwzEl) pwzEl.innerHTML = att.pwz ? `PWZ: <strong style="color:#0f172a;">${att.pwz}</strong>` : `Uczestnik`;
+  if (pwzEl) pwzEl.innerHTML = att.pwz ? `${isEn ? 'License' : 'PWZ'}: <strong style="color:#0f172a;">${att.pwz}</strong>` : (isEn ? 'Attendee' : 'Uczestnik');
 
   if (badgeEl && badgeDot && badgeText) {
     if (att.attended) {
@@ -161,13 +222,13 @@ function applyAttendeeProfile(att) {
       badgeEl.style.borderColor = '#a7f3d0';
       badgeEl.style.color = '#065f46';
       badgeDot.style.backgroundColor = '#10b981';
-      badgeText.textContent = 'OBECNY';
+      badgeText.textContent = isEn ? 'PRESENT' : 'OBECNY';
     } else {
       badgeEl.style.background = '#fef3c7';
       badgeEl.style.borderColor = '#fde68a';
       badgeEl.style.color = '#92400e';
       badgeDot.style.backgroundColor = '#f59e0b';
-      badgeText.textContent = 'PRZED ODPRAWĄ';
+      badgeText.textContent = isEn ? 'PENDING CHECK-IN' : 'PRZED ODPRAWĄ';
     }
   }
 
@@ -175,11 +236,11 @@ function applyAttendeeProfile(att) {
   const oilPwz = document.getElementById('oil-attendee-pwz');
   const oilStatus = document.getElementById('oil-attendance-status');
   if (oilName) oilName.textContent = fullName;
-  if (oilPwz) oilPwz.textContent = att.pwz || 'Brak PWZ';
-  if (oilStatus) oilStatus.textContent = att.attended ? 'Potwierdzona na recepcji (100%)' : 'Oczekuje na odprawę';
+  if (oilPwz) oilPwz.textContent = att.pwz || (isEn ? 'No License Number' : 'Brak PWZ');
+  if (oilStatus) oilStatus.textContent = att.attended ? (isEn ? 'Confirmed at reception (100%)' : 'Potwierdzona na recepcji (100%)') : (isEn ? 'Awaiting reception check-in' : 'Oczekuje na odprawę');
 }
 
-// ================= 2. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
+// ================= 3. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
 const QUESTIONS_BY_PIN = {
   '1040': {
     pin: '1040', roomShort: 'SALA A', session: 'Sesja II: Kardiologia Interwencyjna',
@@ -291,7 +352,7 @@ let userCalendarPlan = JSON.parse(localStorage.getItem('med_conf_cal_plan') || '
 let savedContacts = JSON.parse(localStorage.getItem('skd_saved_contacts') || '[]');
 let netQrScanner = null;
 
-// ================= 3. KALENDARZ I WYSZUKIWARKA =================
+// ================= 4. KALENDARZ I WYSZUKIWARKA =================
 function renderProgramTimeline() {
   const container = document.getElementById('program-timeline');
   if (!container || typeof CALENDAR_SLOTS === 'undefined') return;
@@ -302,14 +363,15 @@ function renderProgramTimeline() {
 
 function renderMyPlanTimeline() {
   const container = document.getElementById('myplan-timeline');
+  const isEn = window.location.pathname.includes('index-en.html');
   if (!container || typeof CALENDAR_SLOTS === 'undefined') return;
 
   if (userCalendarPlan.length === 0) {
     container.innerHTML = `
       <div style="text-align:center; padding:36px 16px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; margin-top:8px;">
-        <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:4px;">Twój plan jest pusty</div>
-        <div style="font-size:11.5px; color:#64748b; margin-bottom:14px;">Przejdź do zakładki „Program” i dodaj wykłady do swojego planu.</div>
-        <button id="btn-empty-go-program" class="btn-primary" style="font-size:11.5px; padding:8px 16px;">Przeglądaj Program</button>
+        <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:4px;">${isEn ? 'Your plan is empty' : 'Twój plan jest pusty'}</div>
+        <div style="font-size:11.5px; color:#64748b; margin-bottom:14px;">${isEn ? 'Go to "Schedule" and add sessions to your plan.' : 'Przejdź do zakładki „Program” i dodaj wykłady do swojego planu.'}</div>
+        <button id="btn-empty-go-program" class="btn-primary" style="font-size:11.5px; padding:8px 16px;">${isEn ? 'Browse Schedule' : 'Przeglądaj Program'}</button>
       </div>
     `;
     document.getElementById('btn-empty-go-program')?.addEventListener('click', () => switchTab('program'));
@@ -336,6 +398,7 @@ function renderMyPlanTimeline() {
 }
 
 function buildTimelineHTML(slots, onlyMyPlan) {
+  const isEn = window.location.pathname.includes('index-en.html');
   let output = '';
   slots.forEach(slot => {
     const visibleSessions = onlyMyPlan
@@ -351,7 +414,7 @@ function buildTimelineHTML(slots, onlyMyPlan) {
         sessionsHtml += `
           <div class="card break-card" data-session-id="${sess.id}" data-search="${searchData}">
             <div class="card-head">
-              <span class="badge-break">ORGANIZACYJNA</span>
+              <span class="badge-break">${isEn ? 'BREAK' : 'ORGANIZACYJNA'}</span>
               <span style="font-size:9.5px; font-weight:700; color:#64748b; margin-left:auto;">${sess.roomShort}</span>
             </div>
             <div class="card-title">${sess.title}</div>
@@ -365,7 +428,7 @@ function buildTimelineHTML(slots, onlyMyPlan) {
             <div class="card-head">
               <span class="badge-room">${sess.roomShort}</span>
               <button class="btn-add-plan ${isSelected ? 'in-plan' : ''}" data-toggle-plan="${sess.id}">
-                ${isSelected ? '✓ W PLANIE' : '+ Dodaj do planu'}
+                ${isSelected ? (isEn ? '✓ IN PLAN' : '✓ W PLANIE') : (isEn ? '+ Add to plan' : '+ Dodaj do planu')}
               </button>
             </div>
             <div class="card-title">${sess.title}</div>
@@ -407,14 +470,15 @@ function attachSessionClickListeners() {
 }
 
 function toggleCalendarSession(sessionId) {
+  const isEn = window.location.pathname.includes('index-en.html');
   if (userCalendarPlan.includes(sessionId)) {
     userCalendarPlan = userCalendarPlan.filter(id => id !== sessionId);
     triggerHaptic('warning');
-    showToast('Usunięto z Twojego Planu');
+    showToast(isEn ? 'Removed from My Plan' : 'Usunięto z Twojego Planu');
   } else {
     userCalendarPlan.push(sessionId);
     triggerHaptic('success');
-    showToast('✓ Dodano do Twojego Planu');
+    showToast(isEn ? '✓ Added to My Plan' : '✓ Dodano do Twojego Planu');
   }
   localStorage.setItem('med_conf_cal_plan', JSON.stringify(userCalendarPlan));
   updateMyPlanCount();
@@ -440,7 +504,7 @@ function switchGlobalDay(dayKey) {
   renderProgramTimeline();
 }
 
-// ================= 4. MODAL SESJI & NAWIGACJA =================
+// ================= 5. MODAL SESJI & NAWIGACJA =================
 function findSessionById(sessionId) {
   if (typeof CALENDAR_SLOTS === 'undefined') return null;
   for (const dayKey in CALENDAR_SLOTS) {
@@ -458,6 +522,7 @@ function openSessionModal(sessionId) {
   const data = findSessionById(sessionId);
   if (!data) return;
 
+  const isEn = window.location.pathname.includes('index-en.html');
   triggerHaptic('light');
   const { session, timeSlot, dayLabel } = data;
   const isSelected = userCalendarPlan.includes(session.id);
@@ -478,16 +543,16 @@ function openSessionModal(sessionId) {
     <div class="modal-meta-row" style="margin-bottom:10px;">
       <span class="modal-badge">📅 ${dayLabel}</span>
       <span class="modal-badge">🕒 ${timeSlot}</span>
-      <span class="modal-badge" style="background:#eff6ff; color:#1e3a8a; font-weight:700;">📍 ${session.roomShort || 'Główna'}</span>
+      <span class="modal-badge" style="background:#eff6ff; color:#1e3a8a; font-weight:700;">📍 ${session.roomShort || 'Main'}</span>
     </div>
     <div class="modal-title" style="margin-bottom:8px;">${session.title}</div>
     <div class="modal-speaker-box" style="margin-bottom:12px;">
       <div>
-        <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">PRELEGENT</div>
-        <div class="modal-speaker-name">${session.speaker || 'Komitet Naukowy'}</div>
+        <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">${isEn ? 'SPEAKER' : 'PRELEGENT'}</div>
+        <div class="modal-speaker-name">${session.speaker || (isEn ? 'Scientific Committee' : 'Komitet Naukowy')}</div>
       </div>
     </div>
-    <div class="modal-desc" style="margin-bottom:12px;">${session.description || 'Brak dodatkowego opisu sesji.'}</div>
+    <div class="modal-desc" style="margin-bottom:12px;">${session.description || (isEn ? 'No additional description provided.' : 'Brak dodatkowego opisu sesji.')}</div>
     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
         <span style="font-size:11.5px; font-weight:800; color:#0f172a;">${nav.icon} ${nav.roomTitle}</span>
@@ -499,7 +564,7 @@ function openSessionModal(sessionId) {
     </div>
     ${!session.isBreak ? `
       <button id="modal-plan-toggle" class="btn-add-plan ${isSelected ? 'in-plan' : ''}" style="width:100%; justify-content:center; padding:10px;">
-        ${isSelected ? '✓ USUŃ Z MOJEGO PLANU' : '+ DODAJ DO MOJEGO PLANU'}
+        ${isSelected ? (isEn ? '✓ REMOVE FROM MY PLAN' : '✓ USUŃ Z MOJEGO PLANU') : (isEn ? '+ ADD TO MY PLAN' : '+ DODAJ DO MOJEGO PLANU')}
       </button>
     ` : ''}
   `;
@@ -519,16 +584,17 @@ function closeSessionModal() {
   document.body.style.overflow = '';
 }
 
-// ================= 5. OBSŁUGA QUIZU & PIN =================
+// ================= 6. OBSŁUGA QUIZU & PIN =================
 function processPin(pin) {
   const errorMsg = document.getElementById('main-pin-error');
+  const isEn = window.location.pathname.includes('index-en.html');
   if (QUESTIONS_BY_PIN[pin]) {
     errorMsg?.classList.add('hidden');
     triggerHaptic('success');
     renderQuestion(QUESTIONS_BY_PIN[pin]);
     document.getElementById('vote-pin-welcome').classList.add('hidden');
     document.getElementById('vote-active-view').classList.remove('hidden');
-    showToast(`✓ Dołączono do sesji (${QUESTIONS_BY_PIN[pin].roomShort})`);
+    showToast(isEn ? `✓ Joined session (${QUESTIONS_BY_PIN[pin].roomShort})` : `✓ Dołączono do sesji (${QUESTIONS_BY_PIN[pin].roomShort})`);
   } else {
     errorMsg?.classList.remove('hidden');
     triggerHaptic('error');
@@ -536,12 +602,13 @@ function processPin(pin) {
 }
 
 function renderQuestion(data) {
+  const isEn = window.location.pathname.includes('index-en.html');
   activeQuestionData = data;
   document.getElementById('active-pin-badge').innerText = data.pin;
   document.getElementById('vote-room-tag').innerText = data.roomShort;
   document.getElementById('vote-session-name').innerText = data.session;
-  document.getElementById('vote-speaker-name').innerText = `Prelegent: ${data.speaker}`;
-  document.getElementById('vote-topic-title').innerText = `Temat: ${data.topic}`;
+  document.getElementById('vote-speaker-name').innerText = `${isEn ? 'Speaker' : 'Prelegent'}: ${data.speaker}`;
+  document.getElementById('vote-topic-title').innerText = `${isEn ? 'Topic' : 'Temat'}: ${data.topic}`;
   document.getElementById('vote-question-text').innerText = data.question;
   document.getElementById('vote-question-sub').innerText = data.questionSub;
   document.getElementById('qa-speaker-badge').innerText = data.speakerShort;
@@ -583,9 +650,10 @@ function renderQuestion(data) {
 
 function renderDedicatedQaList() {
   const container = document.getElementById('dedicated-qa-list');
+  const isEn = window.location.pathname.includes('index-en.html');
   container.innerHTML = '';
   if (!activeQuestionData?.qaList || activeQuestionData.qaList.length === 0) {
-    container.innerHTML = '<div style="font-size:10px; color:#94a3b8; text-align:center; padding:6px;">Brak pytań. Zadaj pierwsze!</div>';
+    container.innerHTML = `<div style="font-size:10px; color:#94a3b8; text-align:center; padding:6px;">${isEn ? 'No questions yet. Be the first!' : 'Brak pytań. Zadaj pierwsze!'}</div>`;
     return;
   }
   activeQuestionData.qaList.forEach((q) => {
@@ -593,7 +661,7 @@ function renderDedicatedQaList() {
     item.className = 'qa-item';
     item.innerHTML = `
       <div class="qa-item-text">${q.text}</div>
-      <button class="btn-upvote ${q.upvoted ? 'active' : ''}">${q.upvoted ? '✓ Poparto' : 'Popieram'} (${q.votes})</button>
+      <button class="btn-upvote ${q.upvoted ? 'active' : ''}">${q.upvoted ? (isEn ? '✓ Upvoted' : '✓ Poparto') : (isEn ? 'Upvote' : 'Popieram')} (${q.votes})</button>
     `;
     item.querySelector('button').onclick = () => {
       triggerHaptic('upvote');
@@ -605,22 +673,23 @@ function renderDedicatedQaList() {
   });
 }
 
-// ================= 6. MODUŁ NETWORKINGU I WIZYTÓWEK =================
+// ================= 7. MODUŁ NETWORKINGU I WIZYTÓWEK =================
 function renderSavedContacts() {
   const container = document.getElementById('net-contacts-list');
   const countEl = document.getElementById('net-contacts-count');
+  const isEn = window.location.pathname.includes('index-en.html');
   if (!container) return;
 
   if (countEl) countEl.textContent = savedContacts.length;
 
   if (savedContacts.length === 0) {
-    container.innerHTML = '<div style="font-size:11px; color:#94a3b8; text-align:center; padding:16px; background:#f8fafc; border:1px dashed #e2e8f0; border-radius:10px;">Brak zapisanych wizytówek. Zeskanuj kod QR z identyfikatora innej osoby.</div>';
+    container.innerHTML = `<div style="font-size:10.5px; color:#94a3b8; text-align:center; padding:10px;">${isEn ? 'No saved contacts yet.' : 'Brak zapisanych wizytówek.'}</div>`;
     return;
   }
 
   container.innerHTML = savedContacts.map((contact, idx) => {
     const title = contact.academic_title ? `${contact.academic_title} ` : '';
-    const pwzInfo = contact.pwz ? `<span style="font-size:9.5px; color:#0284c7; font-weight:700;">PWZ: ${contact.pwz}</span>` : '<span style="font-size:9.5px; color:#64748b;">Uczestnik</span>';
+    const pwzInfo = contact.pwz ? `<span style="font-size:9.5px; color:#0284c7; font-weight:700;">${isEn ? 'Lic.' : 'PWZ'}: ${contact.pwz}</span>` : `<span style="font-size:9.5px; color:#64748b;">${isEn ? 'Attendee' : 'Uczestnik'}</span>`;
     return `
       <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <div style="min-width:0;">
@@ -648,7 +717,7 @@ function renderSavedContacts() {
       savedContacts.splice(idx, 1);
       localStorage.setItem('skd_saved_contacts', JSON.stringify(savedContacts));
       renderSavedContacts();
-      showToast('Usunięto kontakt');
+      showToast(isEn ? 'Contact removed' : 'Usunięto kontakt');
     };
   });
 }
@@ -668,8 +737,9 @@ function downloadVCard(user) {
 
 function startNetScanner() {
   const modal = document.getElementById('net-scanner-modal');
+  const isEn = window.location.pathname.includes('index-en.html');
   if (!modal || typeof Html5Qrcode === 'undefined') {
-    alert('Biblioteka skanera nie została załadowana.');
+    alert(isEn ? 'Scanner library not loaded.' : 'Biblioteka skanera nie została załadowana.');
     return;
   }
 
@@ -689,7 +759,7 @@ function startNetScanner() {
     },
     () => {}
   ).catch(() => {
-    alert('Brak dostępu do kamery.');
+    alert(isEn ? 'Camera access permission denied.' : 'Brak uprawnień do kamery.');
     stopNetScanner();
   });
 }
@@ -704,6 +774,7 @@ function stopNetScanner() {
 }
 
 async function handleScannedContact(rawQrText) {
+  const isEn = window.location.pathname.includes('index-en.html');
   let token = rawQrText.trim();
   if (token.includes('token=')) {
     try {
@@ -728,19 +799,19 @@ async function handleScannedContact(rawQrText) {
       }
       renderSavedContacts();
       triggerHaptic('success');
-      showToast(`✓ Zapisano kontakt: ${newContact.first_name} ${newContact.last_name}`);
+      showToast(isEn ? `✓ Saved contact: ${newContact.first_name} ${newContact.last_name}` : `✓ Zapisano kontakt: ${newContact.first_name} ${newContact.last_name}`);
       downloadVCard(newContact);
     } else {
       triggerHaptic('error');
-      alert('Nie znaleziono profilu dla zeskanowanego kodu.');
+      alert(isEn ? 'Profile not found for this QR code.' : 'Nie znaleziono profilu dla zeskanowanego kodu.');
     }
   } catch (err) {
     triggerHaptic('error');
-    alert('Błąd sieci podczas pobierania wizytówki.');
+    alert(isEn ? 'Network error downloading contact card.' : 'Błąd sieci podczas pobierania wizytówki.');
   }
 }
 
-// ================= 7. ZAKŁADKI I NAWIGACJA =================
+// ================= 8. ZAKŁADKI I NAWIGACJA =================
 function switchTab(tabId) {
   triggerHaptic('light');
   currentActiveTab = tabId;
@@ -782,18 +853,21 @@ function showToast(text) {
   setTimeout(() => toast.classList.add('hidden'), 2000);
 }
 
-// ================= 8. INICJALIZACJA & LISTENERY =================
+// ================= 9. INICJALIZACJA & LISTENERY =================
 document.addEventListener('DOMContentLoaded', async () => {
+  setupLanguageSelection();
   await initAttendeeProfile();
   updateMyPlanCount();
   renderProgramTimeline();
 
-  // Dni
+  const isEn = window.location.pathname.includes('index-en.html');
+
+  // Selektor dni
   document.getElementById('btn-day-1')?.addEventListener('click', () => switchGlobalDay('day-1'));
   document.getElementById('btn-day-2')?.addEventListener('click', () => switchGlobalDay('day-2'));
   document.getElementById('btn-day-3')?.addEventListener('click', () => switchGlobalDay('day-3'));
 
-  // Nawigacja dolna (5 zakładek)
+  // Nawigacja dolna
   document.getElementById('nav-program')?.addEventListener('click', () => switchTab('program'));
   document.getElementById('nav-myplan')?.addEventListener('click', () => switchTab('myplan'));
   document.getElementById('nav-vote')?.addEventListener('click', () => switchTab('vote'));
@@ -808,7 +882,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-auth-continue-guest')?.addEventListener('click', () => {
     closeAuthPinModal();
     document.getElementById('guest-token-banner')?.classList.remove('hidden');
-    showToast('Przeglądasz w trybie gościa');
+    showToast(isEn ? 'Browsing as Guest' : 'Przeglądasz w trybie gościa');
   });
 
   // Modal szczegółów sesji
@@ -854,7 +928,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('qa-form-opened').classList.add('hidden');
     document.getElementById('qa-form-closed').classList.remove('hidden');
     input.value = '';
-    showToast('✓ Wysłano pytanie');
+    showToast(isEn ? '✓ Question submitted' : '✓ Wysłano pytanie');
   });
 
   // Networking skaner
@@ -864,7 +938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Certyfikat OIL
   document.getElementById('btn-download-certificate')?.addEventListener('click', () => {
-    showToast('Certyfikat PDF zostanie przesłany na adres e-mail.');
+    showToast(isEn ? 'PDF certificate will be sent to your e-mail.' : 'Certyfikat PDF zostanie przesłany na adres e-mail.');
   });
 
   // Wyszukiwarka globalna
@@ -892,7 +966,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Splash Screen
+  // Splash screen
   const splash = document.getElementById('app-splash-screen');
   if (splash) {
     setTimeout(() => {
