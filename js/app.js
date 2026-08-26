@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 
-// ================= 0. HAPTYKA =================
+// ================= 0. HAPTYKA & POMOCNIKI JĘZYKOWE =================
 function triggerHaptic(type = 'light') {
   if (!('vibrate' in navigator)) return;
   try {
@@ -16,11 +16,43 @@ function triggerHaptic(type = 'light') {
   } catch {}
 }
 
+function isEnglish() {
+  return window.location.pathname.includes('index-en.html');
+}
+
+function getLang() {
+  return isEnglish() ? 'en' : 'pl';
+}
+
+function getLangText(obj, fieldBase) {
+  if (!obj) return '';
+  const lang = getLang();
+  // Sprawdź wariant np. title_en, title_pl, desc_en, desc_pl
+  if (obj[`${fieldBase}_${lang}`]) return obj[`${fieldBase}_${lang}`];
+  if (obj[`${fieldBase}_pl`]) return obj[`${fieldBase}_pl`];
+  if (obj[fieldBase]) return obj[fieldBase];
+  // Warianty synonimiczne (np. description vs desc)
+  if (fieldBase === 'desc' && obj.description) return obj.description;
+  if (fieldBase === 'description' && obj.desc) return obj.desc;
+  return '';
+}
+
+function getDayLabel(dayKey) {
+  const lang = getLang();
+  if (typeof DAY_NAMES !== 'undefined' && DAY_NAMES[lang] && DAY_NAMES[lang][dayKey]) {
+    return DAY_NAMES[lang][dayKey];
+  }
+  if (typeof DAY_NAMES !== 'undefined' && DAY_NAMES[dayKey]) {
+    return DAY_NAMES[dayKey];
+  }
+  return dayKey;
+}
+
 // ================= 1. WYBÓR JĘZYKA & FIRST LAUNCH MODAL =================
 function setupLanguageSelection() {
   const currentToken = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('skd_attendee_token');
   const tokenParam = currentToken ? `?token=${encodeURIComponent(currentToken)}` : '';
-  const isEnPage = window.location.pathname.includes('index-en.html');
+  const isEnPage = isEnglish();
   const savedLang = localStorage.getItem('skd_lang_chosen');
 
   const langModal = document.getElementById('lang-select-modal');
@@ -146,7 +178,7 @@ async function verifyAuthPin() {
   const pinInput = document.getElementById('auth-pin-input');
   const errorEl = document.getElementById('auth-pin-error');
   const btnVerify = document.getElementById('btn-auth-verify-pin');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   const pin = pinInput?.value.trim();
   const tokenToVerify = pendingTokenFromUrl || localStorage.getItem('skd_attendee_token');
 
@@ -203,7 +235,7 @@ async function verifyAuthPin() {
 }
 
 function applyAttendeeProfile(att) {
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   document.getElementById('guest-token-banner')?.classList.add('hidden');
 
   const fullName = `${att.academic_title ? att.academic_title + ' ' : ''}${att.first_name} ${att.last_name}`;
@@ -243,7 +275,7 @@ function applyAttendeeProfile(att) {
 // ================= 3. BAZA QUIZÓW I DEDYKOWANYCH Q&A =================
 const QUESTIONS_BY_PIN = {
   '1040': {
-    pin: '1040', roomShort: 'SALA A', session: 'Sesja II: Kardiologia Interwencyjna',
+    pin: '1040', roomShort_pl: 'SALA A', roomShort_en: 'HALL A', session: 'Sesja II: Kardiologia Interwencyjna',
     speaker: 'prof. dr hab. n. med. Andrzej Nowak', speakerShort: 'prof. A. Nowak',
     topic: 'Ostre zespoły wieńcowe u chorych z cukrzycą',
     question: 'Przypadek kliniczny: 58-letni pacjent z NSTEMI i cukrzycą typu 2.',
@@ -256,7 +288,7 @@ const QUESTIONS_BY_PIN = {
     qaList: [{ id: 'q1', text: 'Czy u chorych z eGFR poniżej 30 modyfikujemy dawkę nasycającą?', votes: 14, upvoted: false }]
   },
   '2080': {
-    pin: '2080', roomShort: 'SALA B', session: 'Sesja Rytmu Serca & Elektrofizjologia',
+    pin: '2080', roomShort_pl: 'SALA B', roomShort_en: 'HALL B', session: 'Sesja Rytmu Serca & Elektrofizjologia',
     speaker: 'dr hab. n. med. Ewa Wiśniewska', speakerShort: 'dr hab. E. Wiśniewska',
     topic: 'Migotanie przedsionków – ablacja vs farmakoterapia',
     question: 'Przypadek: 45-letni sportowiec z napadowym migotaniem przedsionków (EHRA III).',
@@ -269,7 +301,7 @@ const QUESTIONS_BY_PIN = {
     qaList: [{ id: 'q2', text: 'Jaki jest zalecany minimalny czas przerwy w treningach po krioablacji?', votes: 8, upvoted: false }]
   },
   '3010': {
-    pin: '3010', roomShort: 'WARSZTAT', session: 'Warsztat USG: Echokardiografia Obciążeniowa',
+    pin: '3010', roomShort_pl: 'WARSZTAT', roomShort_en: 'WORKSHOP', session: 'Warsztat USG: Echokardiografia Obciążeniowa',
     speaker: 'dr n. med. Marek Zieliński', speakerShort: 'dr M. Zieliński',
     topic: 'Praktyczne aspekty oceny żywotności mięśnia sercowego',
     question: 'Obraz USG: Asymetria kurczliwości ściany dolno-bocznej.',
@@ -285,58 +317,90 @@ const QUESTIONS_BY_PIN = {
 
 const VENUE_NAVIGATION_DATA = {
   'SALA A': {
-    roomTitle: 'Sala Audytoryjna A (Główna)',
-    level: 'Poziom +1 (Skrzydło Północne)',
+    roomTitle_pl: 'Sala Audytoryjna A (Główna)',
+    roomTitle_en: 'Auditorium Hall A (Main)',
+    level_pl: 'Poziom +1 (Skrzydło Północne)',
+    level_en: 'Level +1 (North Wing)',
     icon: '🏛️',
-    steps: [
+    steps_pl: [
       'Z holu głównego skieruj się ku schodom ruchomym obok rejestracji.',
       'Wjedź schodami na 1. piętro.',
       'Skręć w prawo i miń strefę kawową.',
       'Wejście do Sali A znajduje się na końcu korytarza po lewej stronie.'
+    ],
+    steps_en: [
+      'From the main foyer, head towards the escalators near reception.',
+      'Take the escalator to the 1st floor.',
+      'Turn right and pass the coffee zone.',
+      'Entrance to Hall A is at the end of the corridor on the left.'
     ]
   },
   'SALA B': {
-    roomTitle: 'Sala Wykładowa B (Kliniczna)',
-    level: 'Poziom +1 (Skrzydło Południowe)',
+    roomTitle_pl: 'Sala Wykładowa B (Kliniczna)',
+    roomTitle_en: 'Lecture Hall B (Clinical)',
+    level_pl: 'Poziom +1 (Skrzydło Południowe)',
+    level_en: 'Level +1 (South Wing)',
     icon: '🏥',
-    steps: [
+    steps_pl: [
       'Z recepcji skieruj się w lewo ku Windom B.',
       'Wjedź windą na 1. piętro.',
       'Kieruj się prosto korytarzem obok Stoiska OIL.',
       'Sala B znajduje się po prawej stronie naprzeciwko VIP Lounge.'
+    ],
+    steps_en: [
+      'From the reception, head left towards Elevators B.',
+      'Take the elevator to the 1st floor.',
+      'Walk straight along the corridor past the CME/OIL booth.',
+      'Hall B is on the right side opposite the VIP Lounge.'
     ]
   },
   'WARSZTAT': {
-    roomTitle: 'Sala Warsztatowa USG',
-    level: 'Poziom 0 (Parter)',
+    roomTitle_pl: 'Sala Warsztatowa USG',
+    roomTitle_en: 'USG Simulation Workshop Room',
+    level_pl: 'Poziom 0 (Parter)',
+    level_en: 'Level 0 (Ground Floor)',
     icon: '🔬',
-    steps: [
+    steps_pl: [
       'W holu głównym idź prosto wzdłuż pasażu wystawienniczego.',
       'Miń stoisko Philips po prawej stronie.',
       'Przejdź przez przeszklony łącznik do Strefy Symulacji Medycznej.'
+    ],
+    steps_en: [
+      'In the main foyer, walk straight through the expo gallery.',
+      'Pass the Philips booth on your right.',
+      'Cross the glass connector to the Medical Simulation Zone.'
     ]
   }
 };
 
 function getNavigationGuide(roomShort) {
+  const isEn = isEnglish();
   const cleanName = (roomShort || '').trim().toUpperCase();
   for (const key in VENUE_NAVIGATION_DATA) {
-    if (cleanName.includes(key)) return VENUE_NAVIGATION_DATA[key];
+    if (cleanName.includes(key) || (key === 'SALA A' && cleanName.includes('HALL A')) || (key === 'SALA B' && cleanName.includes('HALL B')) || (key === 'WARSZTAT' && cleanName.includes('WORKSHOP'))) {
+      const item = VENUE_NAVIGATION_DATA[key];
+      return {
+        roomTitle: isEn ? item.roomTitle_en : item.roomTitle_pl,
+        level: isEn ? item.level_en : item.level_pl,
+        icon: item.icon,
+        steps: isEn ? item.steps_en : item.steps_pl
+      };
+    }
   }
   return {
-    roomTitle: roomShort || 'Sala Konferencyjna',
-    level: 'Centrum Konferencyjne',
+    roomTitle: roomShort || (isEn ? 'Conference Room' : 'Sala Konferencyjna'),
+    level: isEn ? 'Conference Center' : 'Centrum Konferencyjne',
     icon: '📍',
-    steps: ['Sprawdź oznaczenia multimedialne na totemach LCD przy wejściach do sal.']
+    steps: isEn ? ['Check the multimedia displays near the hall entrance.'] : ['Sprawdź oznaczenia multimedialne na totemach LCD przy wejściach do sal.']
   };
 }
 
 const BANNED_PATTERNS = [/kurw/i, /chuj/i, /jeb/i, /pierd/i, /pizd/i, /debil/i, /idiot/i];
 function sanitizeQuestion(text) {
   const clean = text.trim().replace(/\s+/g, ' ');
-  if (clean.length < 10) return { valid: false, error: 'Pytanie jest zbyt krótkie (min. 10 znaków).' };
+  if (clean.length < 10) return { valid: false, error: isEnglish() ? 'Question is too short (min. 10 chars).' : 'Pytanie jest zbyt krótkie (min. 10 znaków).' };
   for (const pattern of BANNED_PATTERNS) {
-    if (pattern.test(clean)) return { valid: false, error: 'Treść zawiera niedozwolone słownictwo.' };
+    if (pattern.test(clean)) return { valid: false, error: isEnglish() ? 'Inappropriate language detected.' : 'Treść zawiera niedozwolone słownictwo.' };
   }
   return { valid: true, text: clean };
 }
@@ -363,7 +427,7 @@ function renderProgramTimeline() {
 
 function renderMyPlanTimeline() {
   const container = document.getElementById('myplan-timeline');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   if (!container || typeof CALENDAR_SLOTS === 'undefined') return;
 
   if (userCalendarPlan.length === 0) {
@@ -386,7 +450,7 @@ function renderMyPlanTimeline() {
       fullHtml += `
         <div class="myplan-day-section" style="margin-bottom:24px;">
           <div style="font-size:11.5px; font-weight:800; color:#1e3a8a; background:#e0f2fe; padding:6px 12px; border-radius:8px; margin-bottom:12px; display:inline-flex;">
-            📅 ${DAY_NAMES[dKey].toUpperCase()}
+            📅 ${getDayLabel(dKey).toUpperCase()}
           </div>
           ${dayHtml}
         </div>
@@ -398,7 +462,7 @@ function renderMyPlanTimeline() {
 }
 
 function buildTimelineHTML(slots, onlyMyPlan) {
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   let output = '';
   slots.forEach(slot => {
     const visibleSessions = onlyMyPlan
@@ -409,16 +473,20 @@ function buildTimelineHTML(slots, onlyMyPlan) {
 
     let sessionsHtml = '<div class="session-cards">';
     visibleSessions.forEach(sess => {
-      const searchData = cleanString(`${sess.title} ${sess.speaker} ${sess.roomShort}`);
+      const titleText = getLangText(sess, 'title');
+      const speakerText = getLangText(sess, 'speaker');
+      const roomText = getLangText(sess, 'roomShort');
+      const searchData = cleanString(`${titleText} ${speakerText} ${roomText}`);
+
       if (sess.isBreak) {
         sessionsHtml += `
           <div class="card break-card" data-session-id="${sess.id}" data-search="${searchData}">
             <div class="card-head">
-              <span class="badge-break">${isEn ? 'BREAK' : 'ORGANIZACYJNA'}</span>
-              <span style="font-size:9.5px; font-weight:700; color:#64748b; margin-left:auto;">${sess.roomShort}</span>
+              <span class="badge-break">${isEn ? 'ORGANIZATIONAL' : 'ORGANIZACYJNA'}</span>
+              <span style="font-size:9.5px; font-weight:700; color:#64748b; margin-left:auto;">${roomText}</span>
             </div>
-            <div class="card-title">${sess.title}</div>
-            <div class="card-speaker">${sess.speaker}</div>
+            <div class="card-title">${titleText}</div>
+            <div class="card-speaker">${speakerText}</div>
           </div>
         `;
       } else {
@@ -426,13 +494,13 @@ function buildTimelineHTML(slots, onlyMyPlan) {
         sessionsHtml += `
           <div class="card ${isSelected ? 'selected' : ''}" data-session-id="${sess.id}" data-search="${searchData}">
             <div class="card-head">
-              <span class="badge-room">${sess.roomShort}</span>
+              <span class="badge-room">${roomText}</span>
               <button class="btn-add-plan ${isSelected ? 'in-plan' : ''}" data-toggle-plan="${sess.id}">
                 ${isSelected ? (isEn ? '✓ IN PLAN' : '✓ W PLANIE') : (isEn ? '+ Add to plan' : '+ Dodaj do planu')}
               </button>
             </div>
-            <div class="card-title">${sess.title}</div>
-            <div class="card-speaker">${sess.speaker}</div>
+            <div class="card-title">${titleText}</div>
+            <div class="card-speaker">${speakerText}</div>
           </div>
         `;
       }
@@ -470,7 +538,7 @@ function attachSessionClickListeners() {
 }
 
 function toggleCalendarSession(sessionId) {
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   if (userCalendarPlan.includes(sessionId)) {
     userCalendarPlan = userCalendarPlan.filter(id => id !== sessionId);
     triggerHaptic('warning');
@@ -511,7 +579,7 @@ function findSessionById(sessionId) {
     for (const slot of CALENDAR_SLOTS[dayKey]) {
       const found = slot.sessions.find(s => s.id === sessionId);
       if (found) {
-        return { session: found, timeSlot: slot.timeSlot, dayLabel: DAY_NAMES[dayKey] || dayKey };
+        return { session: found, timeSlot: slot.timeSlot, dayLabel: getDayLabel(dayKey) };
       }
     }
   }
@@ -522,15 +590,21 @@ function openSessionModal(sessionId) {
   const data = findSessionById(sessionId);
   if (!data) return;
 
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   triggerHaptic('light');
   const { session, timeSlot, dayLabel } = data;
   const isSelected = userCalendarPlan.includes(session.id);
-  const nav = getNavigationGuide(session.roomShort);
+  
+  const roomShortText = getLangText(session, 'roomShort');
+  const nav = getNavigationGuide(roomShortText);
 
   const modal = document.getElementById('session-modal');
   const modalBody = document.getElementById('modal-body');
   if (!modal || !modalBody) return;
+
+  const titleText = getLangText(session, 'title');
+  const speakerText = getLangText(session, 'speaker') || (isEn ? 'Scientific Committee' : 'Komitet Naukowy');
+  const descText = getLangText(session, 'desc') || (isEn ? 'No additional description provided.' : 'Brak dodatkowego opisu sesji.');
 
   const navStepsHtml = nav.steps.map((step, idx) => `
     <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:6px;">
@@ -543,16 +617,16 @@ function openSessionModal(sessionId) {
     <div class="modal-meta-row" style="margin-bottom:10px;">
       <span class="modal-badge">📅 ${dayLabel}</span>
       <span class="modal-badge">🕒 ${timeSlot}</span>
-      <span class="modal-badge" style="background:#eff6ff; color:#1e3a8a; font-weight:700;">📍 ${session.roomShort || 'Main'}</span>
+      <span class="modal-badge" style="background:#eff6ff; color:#1e3a8a; font-weight:700;">📍 ${roomShortText || 'Main'}</span>
     </div>
-    <div class="modal-title" style="margin-bottom:8px;">${session.title}</div>
+    <div class="modal-title" style="margin-bottom:8px;">${titleText}</div>
     <div class="modal-speaker-box" style="margin-bottom:12px;">
       <div>
         <div style="font-size:10px; color:#64748b; font-weight:700; text-transform:uppercase;">${isEn ? 'SPEAKER' : 'PRELEGENT'}</div>
-        <div class="modal-speaker-name">${session.speaker || (isEn ? 'Scientific Committee' : 'Komitet Naukowy')}</div>
+        <div class="modal-speaker-name">${speakerText}</div>
       </div>
     </div>
-    <div class="modal-desc" style="margin-bottom:12px;">${session.description || (isEn ? 'No additional description provided.' : 'Brak dodatkowego opisu sesji.')}</div>
+    <div class="modal-desc" style="margin-bottom:12px;">${descText}</div>
     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
         <span style="font-size:11.5px; font-weight:800; color:#0f172a;">${nav.icon} ${nav.roomTitle}</span>
@@ -587,14 +661,15 @@ function closeSessionModal() {
 // ================= 6. OBSŁUGA QUIZU & PIN =================
 function processPin(pin) {
   const errorMsg = document.getElementById('main-pin-error');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   if (QUESTIONS_BY_PIN[pin]) {
     errorMsg?.classList.add('hidden');
     triggerHaptic('success');
     renderQuestion(QUESTIONS_BY_PIN[pin]);
     document.getElementById('vote-pin-welcome').classList.add('hidden');
     document.getElementById('vote-active-view').classList.remove('hidden');
-    showToast(isEn ? `✓ Joined session (${QUESTIONS_BY_PIN[pin].roomShort})` : `✓ Dołączono do sesji (${QUESTIONS_BY_PIN[pin].roomShort})`);
+    const roomShort = getLangText(QUESTIONS_BY_PIN[pin], 'roomShort');
+    showToast(isEn ? `✓ Joined session (${roomShort})` : `✓ Dołączono do sesji (${roomShort})`);
   } else {
     errorMsg?.classList.remove('hidden');
     triggerHaptic('error');
@@ -602,10 +677,10 @@ function processPin(pin) {
 }
 
 function renderQuestion(data) {
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   activeQuestionData = data;
   document.getElementById('active-pin-badge').innerText = data.pin;
-  document.getElementById('vote-room-tag').innerText = data.roomShort;
+  document.getElementById('vote-room-tag').innerText = getLangText(data, 'roomShort');
   document.getElementById('vote-session-name').innerText = data.session;
   document.getElementById('vote-speaker-name').innerText = `${isEn ? 'Speaker' : 'Prelegent'}: ${data.speaker}`;
   document.getElementById('vote-topic-title').innerText = `${isEn ? 'Topic' : 'Temat'}: ${data.topic}`;
@@ -650,7 +725,7 @@ function renderQuestion(data) {
 
 function renderDedicatedQaList() {
   const container = document.getElementById('dedicated-qa-list');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   container.innerHTML = '';
   if (!activeQuestionData?.qaList || activeQuestionData.qaList.length === 0) {
     container.innerHTML = `<div style="font-size:10px; color:#94a3b8; text-align:center; padding:6px;">${isEn ? 'No questions yet. Be the first!' : 'Brak pytań. Zadaj pierwsze!'}</div>`;
@@ -677,7 +752,7 @@ function renderDedicatedQaList() {
 function renderSavedContacts() {
   const container = document.getElementById('net-contacts-list');
   const countEl = document.getElementById('net-contacts-count');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   if (!container) return;
 
   if (countEl) countEl.textContent = savedContacts.length;
@@ -737,7 +812,7 @@ function downloadVCard(user) {
 
 function startNetScanner() {
   const modal = document.getElementById('net-scanner-modal');
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   if (!modal || typeof Html5Qrcode === 'undefined') {
     alert(isEn ? 'Scanner library not loaded.' : 'Biblioteka skanera nie została załadowana.');
     return;
@@ -774,7 +849,7 @@ function stopNetScanner() {
 }
 
 async function handleScannedContact(rawQrText) {
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
   let token = rawQrText.trim();
   if (token.includes('token=')) {
     try {
@@ -860,7 +935,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateMyPlanCount();
   renderProgramTimeline();
 
-  const isEn = window.location.pathname.includes('index-en.html');
+  const isEn = isEnglish();
 
   // Selektor dni
   document.getElementById('btn-day-1')?.addEventListener('click', () => switchGlobalDay('day-1'));
